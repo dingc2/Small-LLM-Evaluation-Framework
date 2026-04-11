@@ -1,0 +1,6 @@
+# llama.cpp adapter extras
+# CPU-only build:
+llama-cpp-python>=0.2.57
+
+# GPU (CUDA) build — uncomment and run instead:
+# CMAKE_ARGS="-DLLAMA_CUDA=on" pip install llama-cpp-python --force-reinstall

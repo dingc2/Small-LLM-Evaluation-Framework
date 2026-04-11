@@ -1,0 +1,24 @@
+# ============================================================
+# LLM Skill-Evaluation Framework — Python dependencies
+# ============================================================
+# Python 3.10+ required.
+#
+# Install all core deps:
+#   pip install -r requirements.txt
+#
+# Install optional extras for specific adapters:
+#   pip install -r requirements.txt -r requirements-hf.txt
+#   pip install -r requirements.txt -r requirements-llamacpp.txt
+
+# ----------------------------------------------------------
+# Core (always required)
+# ----------------------------------------------------------
+pydantic>=2.0
+pyyaml>=6.0
+openai>=1.14          # OpenAIAdapter (also works with vLLM / Ollama / etc.)
+
+# ----------------------------------------------------------
+# Testing
+# ----------------------------------------------------------
+pytest>=7.4
+pytest-asyncio>=0.23

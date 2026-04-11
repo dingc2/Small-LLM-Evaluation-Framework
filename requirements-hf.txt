@@ -1,0 +1,4 @@
+# HuggingFace Transformers adapter extras
+transformers>=4.40
+torch>=2.1
+accelerate>=0.27

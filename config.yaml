@@ -1,0 +1,90 @@
+# ============================================================
+# LLM Skill-Evaluation Framework — Example Configuration
+# ============================================================
+#
+# Run with:
+#   python -m eval_framework.runner --config config.yaml --verbose
+#
+# All paths are relative to the directory you run from.
+
+# ----------------------------------------------------------
+# 1. Models to evaluate
+# ----------------------------------------------------------
+models:
+  # OpenAI (or any OpenAI-compatible endpoint)
+  - type: openai
+    model: gpt-4o-mini
+    # api_key: sk-...           # or set OPENAI_API_KEY env var
+    # base_url: http://localhost:11434/v1   # Ollama / vLLM / LM Studio
+    kwargs:
+      temperature: 0.0
+      max_tokens: 256
+
+  # Uncomment to add a second OpenAI model for comparison:
+  # - type: openai
+  #   model: gpt-3.5-turbo
+  #   kwargs:
+  #     temperature: 0.0
+
+  # HuggingFace local model:
+  # - type: huggingface
+  #   model_id: microsoft/Phi-3-mini-4k-instruct
+  #   kwargs:
+  #     device: cpu
+  #     torch_dtype: float32
+  #     max_new_tokens: 256
+
+  # llama.cpp GGUF model:
+  # - type: llamacpp
+  #   model_path: /path/to/model.Q4_K_M.gguf
+  #   kwargs:
+  #     n_ctx: 4096
+  #     n_gpu_layers: 0     # set > 0 for GPU offload
+  #     chat_format: chatml
+
+# ----------------------------------------------------------
+# 2. Skill directory
+# ----------------------------------------------------------
+skills_dir: ./skills   # path to the skills/ folder tree
+
+# ----------------------------------------------------------
+# 3. Skill configurations
+#    Each entry is a named condition run against every model.
+# ----------------------------------------------------------
+skill_configs:
+  # All skills enabled — measures full skill impact
+  - name: all_skills
+    enabled: []          # empty list = load everything in skills_dir
+
+  # Only a specific subset of skills:
+  # - name: calc_only
+  #   enabled:
+  #     - calculator
+
+  # Baseline — no skills injected (measures raw model capability)
+  - name: no_skills
+    enabled: null        # null = skip the registry entirely
+
+# ----------------------------------------------------------
+# 4. Benchmarks to run
+# ----------------------------------------------------------
+benchmarks:
+  # Does the model route queries to the right skill?
+  - type: skill_selection_accuracy
+    kwargs:
+      include_no_skill_cases: true
+      temperature: 0.0
+
+  # Does the model use skills to produce correct final answers?
+  - type: end_to_end_task_completion
+    kwargs:
+      max_turns: 3
+      temperature: 0.0
+      float_tolerance: 1.0e-4
+
+# ----------------------------------------------------------
+# 5. Runner settings
+# ----------------------------------------------------------
+runs: 1              # Repeat each (model × skill_config × benchmark) N times
+concurrency: 4       # Max parallel model calls
+output_dir: ./results
