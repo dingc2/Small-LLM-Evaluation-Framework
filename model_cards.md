@@ -99,12 +99,12 @@
 
 ### Dataset Description
 
-The evaluation dataset consists of **47 hand-crafted test cases** across two benchmarks:
+The evaluation dataset consists of **45 hand-crafted test cases** across two benchmarks:
 
 | Benchmark | Test Cases | Skill Categories |
 |---|---|---|
 | Skill Selection | 25 | Calculator (5), Unit Converter (5), Dictionary (5), Date/Time (5), None (5) |
-| End-to-End | 22 | Calculator (6), Unit Converter (5), Dictionary (3), Date/Time (4), No Tool (2), No Skill control (2) |
+| End-to-End | 20 | Calculator (6), Unit Converter (5), Dictionary (3), Date/Time (4), No Tool (2) |
 
 ### Data Characteristics
 
@@ -115,11 +115,11 @@ The evaluation dataset consists of **47 hand-crafted test cases** across two ben
 
 ### Limitations
 
-- Small dataset size (47 cases) — results should be interpreted as indicative, not definitive
+- Small dataset size (45 cases) — results should be interpreted as indicative, not definitive
 - English-only queries do not test multilingual capabilities
 - Skills are simple (no multi-hop reasoning or complex API chains)
 - Quantised models may perform differently from full-precision versions
-- The `all_skills` and `no_skills` conditions run different numbers of test cases (25 vs 2 for E2E), making direct score comparison nuanced — the comparison table includes `n_cases` for transparency
+- Both `all_skills` and `no_skills` conditions run the same 20 end-to-end cases; in the `no_skills` condition, tool definitions are not injected so the model answers from raw reasoning — the comparison table includes `n_cases` to confirm parity
 - Keyword-overlap scoring for dictionary definitions (≥60% overlap threshold) is a rough heuristic; more sophisticated semantic similarity scoring (e.g. BERTScore) would be more rigorous
 - Temperature=0.0 does not guarantee fully deterministic outputs under quantised inference; 3 runs provide some variance estimate but more would be ideal
 

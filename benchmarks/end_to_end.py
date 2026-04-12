@@ -42,54 +42,60 @@ or short string — nothing else. Do not include units or extra explanation.
 Do not explain your reasoning. Output ONLY the answer.
 """
 
-# Built-in test cases — organised by skill
+# Built-in test cases — organised by skill.
+# Cases use non-trivial values that small LLMs are unlikely to have memorised
+# (no perfect squares, no round conversions, no famous holidays, etc.).
 _BUILTIN_CASES: list[dict[str, Any]] = [
     # --- Calculator ---
-    {"id": "e2e_calc_01", "prompt": "What is 17 * 23?",
-     "expected": 391, "skill": "calculator", "expression": "17 * 23"},
-    {"id": "e2e_calc_02", "prompt": "Calculate sqrt(625)",
-     "expected": 25.0, "skill": "calculator", "expression": "sqrt(625)"},
-    {"id": "e2e_calc_03", "prompt": "What is 2 ** 10?",
-     "expected": 1024, "skill": "calculator", "expression": "2 ** 10"},
-    {"id": "e2e_calc_04", "prompt": "Compute (55 + 45) / 4",
-     "expected": 25.0, "skill": "calculator", "expression": "(55 + 45) / 4"},
-    {"id": "e2e_calc_05", "prompt": "What is sin(0)?",
-     "expected": 0.0, "skill": "calculator", "expression": "sin(0)"},
-    {"id": "e2e_calc_06", "prompt": "Round pi to 4 decimal places (compute pi)",
-     "expected": math.pi, "skill": "calculator", "expression": "pi",
-     "tolerance": 0.0001},
+    {"id": "e2e_calc_01", "prompt": "What is 347 * 829?",
+     "expected": 287663, "skill": "calculator", "expression": "347 * 829"},
+    {"id": "e2e_calc_02", "prompt": "Compute 7 ** 5 - 9384",
+     "expected": 7423, "skill": "calculator", "expression": "7 ** 5 - 9384"},
+    {"id": "e2e_calc_03", "prompt": "What is sin(1.37) + cos(2.84)?",
+     "expected": 0.02504344501898781, "skill": "calculator",
+     "expression": "sin(1.37) + cos(2.84)", "tolerance": 0.001},
+    {"id": "e2e_calc_04", "prompt": "What's the square root of 7291?",
+     "expected": 85.38735269347563, "skill": "calculator",
+     "expression": "sqrt(7291)", "tolerance": 0.01},
+    {"id": "e2e_calc_05", "prompt": "Calculate (1247 + 3891) / 17.3",
+     "expected": 296.9942196531792, "skill": "calculator",
+     "expression": "(1247 + 3891) / 17.3", "tolerance": 0.01},
+    {"id": "e2e_calc_06", "prompt": "Compute log2(4096) * 3.7 - sqrt(841)",
+     "expected": 15.4, "skill": "calculator",
+     "expression": "log2(4096) * 3.7 - sqrt(841)", "tolerance": 0.01},
 
     # --- Unit Converter ---
-    {"id": "e2e_conv_01", "prompt": "Convert 5 km to miles",
-     "expected": 3.10686, "skill": "unit_converter", "tolerance": 0.001},
-    {"id": "e2e_conv_02", "prompt": "Convert 100 F to C",
-     "expected": 37.7778, "skill": "unit_converter", "tolerance": 0.01},
-    {"id": "e2e_conv_03", "prompt": "Convert 1 kg to lb",
-     "expected": 2.20462, "skill": "unit_converter", "tolerance": 0.001},
-    {"id": "e2e_conv_04", "prompt": "Convert 1 gal to L",
-     "expected": 3.78541, "skill": "unit_converter", "tolerance": 0.001},
-    {"id": "e2e_conv_05", "prompt": "Convert 12 inches to cm",
-     "expected": 30.48, "skill": "unit_converter", "tolerance": 0.01},
+    {"id": "e2e_conv_01", "prompt": "Convert 38471 km to miles",
+     "expected": 23904.771, "skill": "unit_converter", "tolerance": 1.0},
+    {"id": "e2e_conv_02", "prompt": "Convert 41 F to C",
+     "expected": 5.0, "skill": "unit_converter", "tolerance": 0.1},
+    {"id": "e2e_conv_03", "prompt": "Convert 237 grams to ounces",
+     "expected": 8.3599, "skill": "unit_converter", "tolerance": 0.01},
+    {"id": "e2e_conv_04", "prompt": "Convert 3.7 liters to gallons",
+     "expected": 0.9774, "skill": "unit_converter", "tolerance": 0.001},
+    {"id": "e2e_conv_05", "prompt": "Convert 91.4 cm to inches",
+     "expected": 35.984, "skill": "unit_converter", "tolerance": 0.01},
 
     # --- Dictionary ---
-    {"id": "e2e_dict_01", "prompt": "Define the word ephemeral",
-     "expected": "lasting for a very short time", "skill": "dictionary"},
-    {"id": "e2e_dict_02", "prompt": "What does algorithm mean?",
-     "expected": "a process or set of rules to be followed in calculations or other problem-solving operations",
+    {"id": "e2e_dict_01", "prompt": "What does the term 'perplexity' mean?",
+     "expected": "a measurement of how well a probability model predicts a sample; lower is better",
      "skill": "dictionary"},
-    {"id": "e2e_dict_03", "prompt": "Define quantization",
-     "expected": "the process of reducing the precision of a model's weights to decrease memory usage and increase speed",
+    {"id": "e2e_dict_02", "prompt": "Explain what 'tokenization' refers to",
+     "expected": "the process of breaking text into smaller units called tokens for processing",
+     "skill": "dictionary"},
+    {"id": "e2e_dict_03", "prompt": "What is 'entropy' in the technical sense?",
+     "expected": "a measure of the uncertainty or randomness in a system or dataset",
      "skill": "dictionary"},
 
     # --- Date/Time Calculator ---
-    {"id": "e2e_date_01", "prompt": "How many days between 2024-01-01 and 2024-12-31?",
-     "expected": 365, "skill": "datetime_calc"},
-    {"id": "e2e_date_02", "prompt": "What day of the week is 2024-07-04?",
-     "expected": "Thursday", "skill": "datetime_calc"},
-    {"id": "e2e_date_03", "prompt": "Add 30 days to 2024-01-15",
-     "expected": "2024-02-14", "skill": "datetime_calc"},
-    {"id": "e2e_date_04", "prompt": "How many days between 2024-03-01 and 2024-03-15?",
-     "expected": 14, "skill": "datetime_calc"},
+    {"id": "e2e_date_01", "prompt": "How many days between 2024-02-17 and 2025-11-03?",
+     "expected": 625, "skill": "datetime_calc"},
+    {"id": "e2e_date_02", "prompt": "What day of the week was 1997-08-23?",
+     "expected": "Saturday", "skill": "datetime_calc"},
+    {"id": "e2e_date_03", "prompt": "Add 90 days to 2025-03-11",
+     "expected": "2025-06-09", "skill": "datetime_calc"},
+    {"id": "e2e_date_04", "prompt": "How many days between 2024-03-17 and 2024-10-09?",
+     "expected": 206, "skill": "datetime_calc"},
 
     # --- No-tool baselines ---
     {"id": "e2e_no_tool_01", "prompt": "Say exactly: hello",
@@ -106,15 +112,36 @@ def _default_scorer(actual: Any, expected: Any, tolerance: float = _DEFAULT_TOLE
     """
     Score a model answer vs. expected value.
     Returns 1.0 for match, 0.0 otherwise.
-    Handles int/float with tolerance, and string keyword-overlap for long strings.
+
+    Comparison order:
+    1. Both sides parse as floats → numeric comparison with tolerance.
+       If ``actual`` is a string that won't parse directly, attempt to
+       extract the *last* number it contains (handles outputs like
+       "5 km is approximately 3.10686 miles.").
+    2. Exact string match (covers short expected values like "hello",
+       "Thursday", "2024-02-14").
+    3. Keyword-overlap for longer definitions (60 % threshold on words ≥ 3
+       chars) — only when expected has 3+ such words.
     """
     if actual is None:
         return 0.0
 
-    # Numeric comparison
+    # --- Numeric comparison ---
+    # Try to get a float for both sides.  When ``actual`` is a string we
+    # first attempt a direct conversion; if that fails we fall back to
+    # extracting the *last* number from the string.  This handles model
+    # outputs that include units or explanatory prose around the answer.
     try:
-        actual_f = float(actual)
         expected_f = float(expected)
+        # Try direct float conversion of actual first
+        try:
+            actual_f = float(actual)
+        except (TypeError, ValueError):
+            # Fall back: pull the last number embedded in the string
+            num = _extract_last_number(str(actual))
+            if num is None:
+                raise ValueError("no number in actual")
+            actual_f = num
         return 1.0 if math.isclose(actual_f, expected_f, abs_tol=tolerance, rel_tol=tolerance) else 0.0
     except (TypeError, ValueError):
         pass
@@ -122,12 +149,12 @@ def _default_scorer(actual: Any, expected: Any, tolerance: float = _DEFAULT_TOLE
     actual_s = str(actual).strip().lower()
     expected_s = str(expected).strip().lower()
 
-    # Exact string match (for short expected values like "hello", "Thursday")
+    # --- Exact string match (covers short strings, dates, day-names …) ---
     if actual_s == expected_s:
         return 1.0
 
-    # Keyword overlap for longer expected strings (e.g. dictionary definitions)
-    # A model won't output a definition verbatim, so check if key terms are present
+    # --- Keyword overlap for longer expected strings (e.g. definitions) ---
+    # A model won't output a definition verbatim; check if key terms appear.
     expected_words = set(re.findall(r"\w{3,}", expected_s))  # words with 3+ chars
     if len(expected_words) >= 3:
         actual_words = set(re.findall(r"\w{3,}", actual_s))
@@ -139,10 +166,16 @@ def _default_scorer(actual: Any, expected: Any, tolerance: float = _DEFAULT_TOLE
     return 1.0 if actual_s == expected_s else 0.0
 
 
-def _extract_number(text: str) -> Optional[float]:
-    """Pull the first number out of a string (handles negatives and decimals)."""
-    match = re.search(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", text)
-    return float(match.group()) if match else None
+def _extract_last_number(text: str) -> Optional[float]:
+    """
+    Pull the *last* number out of a string (handles negatives and decimals).
+
+    Using the last rather than the first number is more robust for model
+    outputs like "5 km is approximately 3.10686 miles." where the answer
+    appears at the end of an explanatory sentence.
+    """
+    matches = list(re.finditer(r"-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?", text))
+    return float(matches[-1].group()) if matches else None
 
 
 class EndToEndBenchmark(Benchmark):
@@ -237,9 +270,11 @@ class EndToEndBenchmark(Benchmark):
     def _build_test_cases(self, skills: Optional[Any]) -> list[TestCase]:
         cases = []
         for c in _BUILTIN_CASES:
-            # Skip skill-dependent cases when no skills are available
-            # (otherwise we'd be testing raw reasoning, not tool-use uplift)
-            if c.get("skill") and (skills is None or c["skill"] not in skills):
+            # Skip cases that require a skill not present in the registry.
+            # When skills=None (no_skills baseline), this condition is always False
+            # so ALL 20 cases run — the same population as all_skills, but without
+            # tool definitions injected. This makes skill_delta a fair comparison.
+            if c.get("skill") and skills is not None and c["skill"] not in skills:
                 continue
             cases.append(
                 TestCase(
@@ -283,6 +318,14 @@ class EndToEndBenchmark(Benchmark):
         actual_value: Any = None
         error_msg: Optional[str] = None
 
+        # Failure mode flags — tracked across turns for observability.
+        # None = not applicable (e.g. no tool was expected / no tool was called).
+        valid_tool_call_format: bool = False       # model produced a parseable tool call
+        skill_selected_correctly: Optional[bool] = None  # named the right skill
+        tool_executed_successfully: Optional[bool] = None  # skill ran without error
+
+        expected_skill = tc.metadata.get("skill")  # None for no-tool baseline cases
+
         prompt = tc.prompt
         turns = 0
 
@@ -308,9 +351,15 @@ class EndToEndBenchmark(Benchmark):
             if not response.has_tool_calls:
                 break
 
+            valid_tool_call_format = True
+
             # Execute tool calls
             tool_outputs: list[str] = []
             for tc_call in response.tool_calls:
+                # Track whether the model selected the expected skill
+                if expected_skill is not None and skill_selected_correctly is None:
+                    skill_selected_correctly = tc_call.name == expected_skill
+
                 if skills and tc_call.name in skills:
                     skill = skills.get(tc_call.name)
                     args = tc_call.arguments
@@ -322,15 +371,18 @@ class EndToEndBenchmark(Benchmark):
                     )
                     skill_out = await skill.execute(si)
                     if skill_out.success:
+                        tool_executed_successfully = True
                         tool_outputs.append(
                             f"Tool '{tc_call.name}' returned: {skill_out.result}"
                         )
                         actual_value = skill_out.result
                     else:
+                        tool_executed_successfully = False
                         tool_outputs.append(
                             f"Tool '{tc_call.name}' error: {skill_out.error}"
                         )
                 else:
+                    tool_executed_successfully = False
                     tool_outputs.append(
                         f"Tool '{tc_call.name}' is not available."
                     )
@@ -338,32 +390,22 @@ class EndToEndBenchmark(Benchmark):
             # Feed tool output back as the new prompt for the next turn
             prompt = "\n".join(tool_outputs) + "\n\nNow provide your final answer."
 
-        # Strip thinking blocks before parsing final content
-        # Handles both closed (<think>...</think>) and unclosed (<think>...) tags
+        # Strip thinking blocks before parsing final content.
+        # Falls back to original if stripping produces empty (model put everything in tags).
         if final_content:
-            import re as _re
-            # Remove properly closed blocks
-            final_content_clean = _re.sub(
-                r"<think(?:ing)?>\s*.*?\s*</think(?:ing)?>", "",
-                final_content, flags=_re.DOTALL | _re.IGNORECASE
-            ).strip()
-            # Remove unclosed opening tags (model forgot to close)
-            final_content_clean = _re.sub(
-                r"<think(?:ing)?>.*$", "",
-                final_content_clean, flags=_re.DOTALL | _re.IGNORECASE
-            ).strip()
-            if not final_content_clean:
-                final_content_clean = final_content
+            from benchmarks.utils import strip_think_tags
+            final_content_clean = strip_think_tags(final_content) or final_content
         else:
             final_content_clean = final_content or ""
 
-        # If no direct tool result, try to parse a number from the model's text
+        # If no direct tool result, preserve the full cleaned model output as a
+        # string.  _default_scorer will attempt numeric extraction internally
+        # when needed (using the *last* number in the string, which is more
+        # reliable than grabbing the first).  Preserving the string also allows
+        # exact-match scoring for date strings like "2024-02-14" that would be
+        # wrongly converted to a float by an eager _extract_number call.
         if actual_value is None and final_content_clean:
-            num = _extract_number(final_content_clean)
-            if num is not None:
-                actual_value = num
-            else:
-                actual_value = final_content_clean.strip()
+            actual_value = final_content_clean.strip()
 
         tolerance = tc.metadata.get("tolerance", self._float_tolerance)
         score = _default_scorer(actual_value, tc.expected, tolerance)
@@ -380,5 +422,11 @@ class EndToEndBenchmark(Benchmark):
             prompt_tokens=total_prompt_tokens,
             completion_tokens=total_completion_tokens,
             error=error_msg,
-            metadata={"turns": turns},
+            metadata={
+                "turns": turns,
+                "valid_tool_call_format": valid_tool_call_format,
+                "skill_selected_correctly": skill_selected_correctly,
+                "tool_executed_successfully": tool_executed_successfully,
+                "final_answer_correct": passed,
+            },
         )

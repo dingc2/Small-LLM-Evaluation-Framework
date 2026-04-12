@@ -21,9 +21,9 @@ from typing import Any
 SKILL_META = {
     "name": "calculator",
     "description": (
-        "Evaluates arithmetic and mathematical expressions. "
-        "Supports +, -, *, /, **, %, sqrt, sin, cos, log, abs, ceil, floor, "
-        "pi, e, and parentheses."
+        "Use for math: arithmetic (+, -, *, /), powers (**), square roots (sqrt), "
+        "trigonometry (sin, cos, tan, log), and constants (pi, e). "
+        "Use this whenever the user needs a numerical calculation."
     ),
     "trigger_patterns": [
         r"\bcalculate\b",

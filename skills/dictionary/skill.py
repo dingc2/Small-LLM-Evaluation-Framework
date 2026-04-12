@@ -16,9 +16,9 @@ from typing import Any
 SKILL_META = {
     "name": "dictionary",
     "description": (
-        "Looks up the definition of a word or term. "
+        "Use for looking up what a word or term means. "
         "Returns the definition, part of speech, and example usage. "
-        "Useful for: define, meaning, definition, what does X mean."
+        "Use this whenever the user asks about the meaning of a word."
     ),
     "trigger_patterns": [
         r"\bdefine\b",

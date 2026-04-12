@@ -27,45 +27,64 @@ models:
     model: qwen3.5:2b
     kwargs:
       temperature: 0.0
-      num_predict: 512
+      num_predict: 1024
 
   - type: ollama
     model: qwen3.5:4b
     kwargs:
       temperature: 0.0
-      num_predict: 512
+      num_predict: 2048
 
   - type: ollama
     model: qwen3.5:9b
     kwargs:
       temperature: 0.0
-      num_predict: 512
+      num_predict: 2048
 
   # ---------- Gemma 4 family ----------
   - type: ollama
     model: gemma4:e2b
     kwargs:
       temperature: 0.0
-      num_predict: 512
+      num_predict: 2048
 
   - type: ollama
     model: gemma4:e4b
     kwargs:
       temperature: 0.0
-      num_predict: 512
+      num_predict: 2048
 
   # ---------- Other families ----------
   - type: ollama
     model: nemotron-3-nano:4b
     kwargs:
       temperature: 0.0
-      num_predict: 512
+      num_predict: 2048
 
   - type: ollama
     model: gpt-oss:20b
     kwargs:
       temperature: 0.0
-      num_predict: 512
+      num_predict: 2048
+
+  # ---------- Ministral-3 families ----------
+  - type: ollama
+    model: ministral-3:3b
+    kwargs:
+      temperature: 0.0
+      num_predict: 2048
+
+  - type: ollama
+    model: ministral-3:8b
+    kwargs:
+      temperature: 0.0
+      num_predict: 2048
+
+  - type: ollama
+    model: ministral-3:14b
+    kwargs:
+      temperature: 0.0
+      num_predict: 2048
 
 # ----------------------------------------------------------
 # 2. Skill directory

@@ -2,6 +2,7 @@
 # ---------------------------------------------------------------------------
 # Path shim — makes `python analyze.py` work from inside eval_framework/
 # ---------------------------------------------------------------------------
+from __future__ import annotations
 import sys as _sys, os as _os
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 # ---------------------------------------------------------------------------
@@ -26,7 +27,7 @@ Usage (run from inside eval_framework/)
 Requires: matplotlib, numpy  (pip install matplotlib numpy)
 """
 
-from __future__ import annotations
+
 
 import argparse
 import json
@@ -40,7 +41,7 @@ from typing import Any
 # Used for the model-size scatter plot
 # ---------------------------------------------------------------------------
 MODEL_PARAMS_B: dict[str, float] = {
-    # --- Your models ---
+    # --- Study models ---
     "qwen3.5:2b": 2.0,
     "qwen3.5:4b": 4.0,
     "qwen3.5:9b": 9.0,
@@ -48,6 +49,9 @@ MODEL_PARAMS_B: dict[str, float] = {
     "gemma4:e4b": 4.0,
     "nemotron-3-nano:4b": 4.0,
     "gpt-oss:20b": 20.0,
+    "ministral-3:3b": 3.0,
+    "ministral-3:8b": 8.0,
+    "ministral-3:14b": 14.0,
     # --- Common extras ---
     "gemma3:4b": 4.0,
     "gemma3:12b": 12.0,
@@ -189,19 +193,35 @@ def _chart_skill_uplift(plt, table: list[dict], output_dir: Path) -> str | None:
 
     models = [r["model"] for r in rows]
     deltas = []
+    errs = []
     for r in rows:
         try:
             deltas.append(float(r["skill_delta"]))
         except ValueError:
             deltas.append(0.0)
+        try:
+            errs.append(float(r.get("score_std", 0)))
+        except (ValueError, TypeError):
+            errs.append(0.0)
+
+    # Only show error bars when there's meaningful variance (n_runs > 1)
+    show_errs = any(e > 0 for e in errs)
 
     fig, ax = plt.subplots(figsize=(10, 6))
     colors = ["#2ecc71" if d >= 0 else "#e74c3c" for d in deltas]
-    bars = ax.barh(models, deltas, color=colors, edgecolor="white", linewidth=0.5)
+    bars = ax.barh(
+        models, deltas,
+        xerr=errs if show_errs else None,
+        color=colors, edgecolor="white", linewidth=0.5,
+        error_kw={"ecolor": "black", "capsize": 4, "linewidth": 1.2},
+    )
 
     ax.set_xlabel("Score Uplift (with skills − without skills)")
     ax.set_title("Skill-Augmentation Uplift by Model", fontweight="bold", fontsize=14)
     ax.axvline(x=0, color="black", linewidth=0.8)
+
+    if show_errs:
+        ax.set_xlabel("Score Uplift (with skills − without skills) ± 1 SD")
 
     # Add value labels
     for bar, val in zip(bars, deltas):
@@ -275,11 +295,13 @@ def _chart_latency(plt, table: list[dict], output_dir: Path) -> str | None:
     if not table:
         return None
 
-    # Group by model
+    # Group by model, collecting latency mean and std
     model_latencies: dict[str, dict[str, float]] = defaultdict(dict)
+    model_lat_stds: dict[str, dict[str, float]] = defaultdict(dict)
     for r in table:
         try:
             model_latencies[r["model"]][r["skill_config"]] = float(r["avg_latency_ms"])
+            model_lat_stds[r["model"]][r["skill_config"]] = float(r.get("latency_std", 0) or 0)
         except (ValueError, KeyError):
             pass
 
@@ -294,13 +316,23 @@ def _chart_latency(plt, table: list[dict], output_dir: Path) -> str | None:
     width = 0.35
     fig, ax = plt.subplots(figsize=(10, 6))
 
+    show_errs = any(
+        model_lat_stds[m].get(cfg, 0) > 0
+        for m in models for cfg in configs
+    )
+
     for i, cfg in enumerate(configs):
         vals = [model_latencies[m].get(cfg, 0) for m in models]
+        stds = [model_lat_stds[m].get(cfg, 0) for m in models]
         offset = (i - len(configs) / 2 + 0.5) * width
-        ax.bar(x + offset, vals, width, label=cfg, alpha=0.85)
+        ax.bar(
+            x + offset, vals, width, label=cfg, alpha=0.85,
+            yerr=stds if show_errs else None,
+            error_kw={"ecolor": "black", "capsize": 3, "linewidth": 1.0},
+        )
 
     ax.set_xlabel("Model")
-    ax.set_ylabel("Average Latency (ms)")
+    ax.set_ylabel("Average Latency (ms)" + (" ± 1 SD" if show_errs else ""))
     ax.set_title("Inference Latency by Model and Skill Configuration", fontweight="bold", fontsize=14)
     ax.set_xticks(x)
     ax.set_xticklabels(models, rotation=30, ha="right")

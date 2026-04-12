@@ -7,11 +7,25 @@
 #   python runner.py --config config_quick.yaml --verbose
 
 models:
+  # ---------- Ministral-3 families ----------
   - type: ollama
-    model: qwen3.5:2b
+    model: ministral-3:3b
     kwargs:
       temperature: 0.0
-      num_predict: 256
+      num_predict: 2048
+
+  - type: ollama
+    model: ministral-3:8b
+    kwargs:
+      temperature: 0.0
+      num_predict: 2048
+
+  - type: ollama
+    model: ministral-3:14b
+    kwargs:
+      temperature: 0.0
+      num_predict: 2048
+
 
 skills_dir: ./skills
 
@@ -30,6 +44,6 @@ benchmarks:
       max_turns: 2
       temperature: 0.0
 
-runs: 1
+runs: 3
 concurrency: 1
 output_dir: ./results

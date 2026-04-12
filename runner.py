@@ -324,6 +324,12 @@ class EvaluationRunner:
         for adapter in adapters:
             for sc_name, registry in skill_registries.items():
                 for benchmark in benchmarks:
+                    if registry is None and benchmark.name == "skill_selection_accuracy":
+                        logger.info(
+                            "Skipping %s for %s/%s (no skills loaded — nothing to route)",
+                            benchmark.name, adapter.model_name, sc_name,
+                        )
+                        continue
                     for run_idx in range(cfg.runs):
                         jobs.append((adapter, sc_name, registry, benchmark, run_idx))
 
@@ -354,11 +360,21 @@ class EvaluationRunner:
         summary.duration_s = time.perf_counter() - start
         summary.comparison_table = _build_comparison_table(summary.results)
 
-        # Auto-save
+        # Auto-save per-run files
         output_dir = Path(cfg.output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
         summary.save_json(output_dir / f"{run_id}_results.json")
         summary.save_csv(output_dir / f"{run_id}_summary.csv")
+
+        # Auto-merge all results in the output directory into aggregated_results.json.
+        # Wrapped in try/except so a merge failure never blocks the primary output.
+        try:
+            from merge_results import auto_merge
+            agg_path = auto_merge(output_dir)
+            if agg_path:
+                logger.info("Aggregated results → %s", agg_path)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Auto-merge failed (per-run file is still saved): %s", exc)
 
         return summary
 
@@ -394,6 +410,7 @@ def _build_comparison_table(results: list[BenchmarkResult]) -> list[dict[str, An
     Adds a ``skill_delta`` column showing the score improvement when skills
     are enabled vs. the baseline run with the same model + benchmark.
     """
+    import statistics
     from collections import defaultdict
 
     # Group by (model, benchmark, skill_config_name)
@@ -420,10 +437,12 @@ def _build_comparison_table(results: list[BenchmarkResult]) -> list[dict[str, An
 
         for sc_name, scores in sorted(sc_scores.items()):
             avg_score = sum(scores) / len(scores)
-            avg_lat = (
-                sum(latency[(model, bench, sc_name)]) / len(latency[(model, bench, sc_name)])
-                if latency[(model, bench, sc_name)] else 0.0
-            )
+            std_score = statistics.stdev(scores) if len(scores) > 1 else 0.0
+
+            lat_vals = latency[(model, bench, sc_name)]
+            avg_lat = sum(lat_vals) / len(lat_vals) if lat_vals else 0.0
+            std_lat = statistics.stdev(lat_vals) if len(lat_vals) > 1 else 0.0
+
             avg_tok = (
                 sum(tokens[(model, bench, sc_name)]) / len(tokens[(model, bench, sc_name)])
                 if tokens[(model, bench, sc_name)] else 0
@@ -451,9 +470,11 @@ def _build_comparison_table(results: list[BenchmarkResult]) -> list[dict[str, An
                 "benchmark": bench,
                 "skill_config": sc_name,
                 "score": f"{avg_score:.3f}",
+                "score_std": f"{std_score:.3f}",
                 "pass_rate": f"{avg_score:.1%}",
                 "n_cases": int(avg_cases),
                 "avg_latency_ms": f"{avg_lat:.1f}",
+                "latency_std": f"{std_lat:.1f}",
                 "avg_tokens": f"{avg_tok:.0f}",
                 "skill_delta": delta,
                 "n_runs": len(scores),

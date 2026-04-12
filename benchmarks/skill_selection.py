@@ -27,62 +27,84 @@ from .base import Benchmark, BenchmarkResult, ScoringStrategy, TestCase, TestRes
 
 logger = logging.getLogger(__name__)
 
-# System prompt template
+# System prompt template — structured for small LLMs with few-shot examples.
+# Research shows few-shot examples are the single biggest driver of routing
+# accuracy for models <20B (see LangChain few-shot tool-calling blog, 2024).
 _SYSTEM_PROMPT = """\
-You are a skill-routing assistant. Given a user query, you must decide which
-skill (if any) to invoke.
+You are a skill-routing assistant. Read the user's query and pick which skill to use.
 
-Available skills:
+## Available skills (pick ONE or say "none"):
 {skill_list}
 
-Respond with EXACTLY one of the skill names listed above, or the word "none"
-if no skill is appropriate. Output ONLY the skill name — no explanation, no
-punctuation, nothing else.
+## Examples:
+User: "What is 123 * 456?"
+Answer: calculator
+
+User: "How many liters in 5 gallons?"
+Answer: unit_converter
+
+User: "What does the word 'inference' mean?"
+Answer: dictionary
+
+User: "How many days between 2023-06-01 and 2023-09-15?"
+Answer: datetime_calc
+
+User: "Write me a poem about the ocean."
+Answer: none
+
+## Rules:
+- Output ONLY the skill name (e.g. calculator) or the word none.
+- Do NOT add any explanation, punctuation, or extra text.
+- Do NOT wrap your answer in tags or quotes.
+- Pick "none" if the query is general knowledge, creative writing, or opinion.
 """
 
 # Built-in test cases: queries that should map to "none"
+# These are intentionally tricky — they mention numbers, units, dates, or
+# word meanings but should NOT trigger any skill.
 _NO_SKILL_CASES: list[dict[str, Any]] = [
-    {"id": "no_skill_01", "prompt": "Tell me a joke.", "expected": "none"},
-    {"id": "no_skill_02", "prompt": "What is the capital of France?", "expected": "none"},
-    {"id": "no_skill_03", "prompt": "Write a haiku about spring.", "expected": "none"},
-    {"id": "no_skill_04", "prompt": "Explain how photosynthesis works.", "expected": "none"},
-    {"id": "no_skill_05", "prompt": "Summarize the plot of Romeo and Juliet.", "expected": "none"},
+    {"id": "no_skill_01", "prompt": "Why did the number 13 become associated with bad luck?", "expected": "none"},
+    {"id": "no_skill_02", "prompt": "Explain the concept of absolute zero in physics.", "expected": "none"},
+    {"id": "no_skill_03", "prompt": "What were the historical origins of the metric system?", "expected": "none"},
+    {"id": "no_skill_04", "prompt": "Describe the cultural significance of the calendar reform of 1582.", "expected": "none"},
+    {"id": "no_skill_05", "prompt": "Why do some languages have untranslatable words?", "expected": "none"},
 ]
 
-# Built-in calculator cases
+# Built-in calculator cases — phrased naturally so routing isn't trivially
+# keyword-triggered by words like "calculate" or "compute".
 _CALCULATOR_CASES: list[dict[str, Any]] = [
-    {"id": "calc_sel_01", "prompt": "Calculate 15 * 7 + 3", "expected": "calculator"},
-    {"id": "calc_sel_02", "prompt": "What is sqrt(256)?", "expected": "calculator"},
-    {"id": "calc_sel_03", "prompt": "Compute 2 ** 16", "expected": "calculator"},
-    {"id": "calc_sel_04", "prompt": "Evaluate sin(0) + cos(0)", "expected": "calculator"},
-    {"id": "calc_sel_05", "prompt": "Solve (100 / 4) - 7", "expected": "calculator"},
+    {"id": "calc_sel_01", "prompt": "I need to figure out what 347 times 829 is", "expected": "calculator"},
+    {"id": "calc_sel_02", "prompt": "If I raise 7 to the 5th power then subtract 9384, what do I get?", "expected": "calculator"},
+    {"id": "calc_sel_03", "prompt": "What's the sine of 1.37 radians plus the cosine of 2.84?", "expected": "calculator"},
+    {"id": "calc_sel_04", "prompt": "Take the square root of 7291 and round to 2 decimals", "expected": "calculator"},
+    {"id": "calc_sel_05", "prompt": "How much is (1247 + 3891) divided by 17.3?", "expected": "calculator"},
 ]
 
-# Unit converter cases
+# Unit converter cases — use non-round values and natural phrasing
 _UNIT_CONVERTER_CASES: list[dict[str, Any]] = [
-    {"id": "conv_sel_01", "prompt": "Convert 5 kilometers to miles", "expected": "unit_converter"},
-    {"id": "conv_sel_02", "prompt": "How many pounds in 10 kg?", "expected": "unit_converter"},
-    {"id": "conv_sel_03", "prompt": "Convert 100 fahrenheit to celsius", "expected": "unit_converter"},
-    {"id": "conv_sel_04", "prompt": "Convert 2 gallons to liters", "expected": "unit_converter"},
-    {"id": "conv_sel_05", "prompt": "How many inches in 3 feet?", "expected": "unit_converter"},
+    {"id": "conv_sel_01", "prompt": "My car's odometer reads 38,471 km — what's that in miles?", "expected": "unit_converter"},
+    {"id": "conv_sel_02", "prompt": "A recipe calls for 237 grams of flour, how many ounces is that?", "expected": "unit_converter"},
+    {"id": "conv_sel_03", "prompt": "It's 41 degrees Fahrenheit outside — what is that in Celsius?", "expected": "unit_converter"},
+    {"id": "conv_sel_04", "prompt": "I have a 3.7 liter engine — how many gallons is that?", "expected": "unit_converter"},
+    {"id": "conv_sel_05", "prompt": "The shelf is 91.4 centimeters wide, I need that in inches", "expected": "unit_converter"},
 ]
 
-# Dictionary cases
+# Dictionary cases — avoid blatant keywords like "define" or "dictionary"
 _DICTIONARY_CASES: list[dict[str, Any]] = [
-    {"id": "dict_sel_01", "prompt": "Define the word 'ephemeral'", "expected": "dictionary"},
-    {"id": "dict_sel_02", "prompt": "What does ubiquitous mean?", "expected": "dictionary"},
-    {"id": "dict_sel_03", "prompt": "Give me the definition of algorithm", "expected": "dictionary"},
-    {"id": "dict_sel_04", "prompt": "Look up the word 'paradigm' in the dictionary", "expected": "dictionary"},
-    {"id": "dict_sel_05", "prompt": "What is the meaning of quantization?", "expected": "dictionary"},
+    {"id": "dict_sel_01", "prompt": "I keep hearing the word 'perplexity' in ML contexts — what does it actually mean?", "expected": "dictionary"},
+    {"id": "dict_sel_02", "prompt": "Can you tell me what 'tokenization' refers to?", "expected": "dictionary"},
+    {"id": "dict_sel_03", "prompt": "Someone described a problem as having high 'entropy' — what's that?", "expected": "dictionary"},
+    {"id": "dict_sel_04", "prompt": "What exactly is a 'gradient' in the technical sense?", "expected": "dictionary"},
+    {"id": "dict_sel_05", "prompt": "I need to understand what 'hallucination' means when talking about LLMs", "expected": "dictionary"},
 ]
 
-# Date/time calculator cases
+# Date/time calculator cases — use obscure dates, not holidays or Jan 1
 _DATETIME_CASES: list[dict[str, Any]] = [
-    {"id": "date_sel_01", "prompt": "How many days between 2024-01-01 and 2024-12-31?", "expected": "datetime_calc"},
-    {"id": "date_sel_02", "prompt": "What day of the week is 2024-07-04?", "expected": "datetime_calc"},
-    {"id": "date_sel_03", "prompt": "Add 30 days to 2024-01-15", "expected": "datetime_calc"},
-    {"id": "date_sel_04", "prompt": "How many days from 2024-03-01 to 2024-06-15?", "expected": "datetime_calc"},
-    {"id": "date_sel_05", "prompt": "What day is 2024-12-25?", "expected": "datetime_calc"},
+    {"id": "date_sel_01", "prompt": "My lease started 2024-02-17 and ends 2025-11-03 — how many days is that?", "expected": "datetime_calc"},
+    {"id": "date_sel_02", "prompt": "I was born on 1997-08-23 — what day of the week was that?", "expected": "datetime_calc"},
+    {"id": "date_sel_03", "prompt": "If I start a 90-day challenge on 2025-03-11, when does it end?", "expected": "datetime_calc"},
+    {"id": "date_sel_04", "prompt": "How long between March 17, 2024 and October 9, 2024 in days?", "expected": "datetime_calc"},
+    {"id": "date_sel_05", "prompt": "What day of the week will September 29, 2025 fall on?", "expected": "datetime_calc"},
 ]
 
 
@@ -143,9 +165,13 @@ class SkillSelectionBenchmark(Benchmark):
 
         system_prompt = self._build_system_prompt(skills)
 
+        # Build the list of valid answer tokens once so _run_single can use them
+        # for think-block recovery without needing the full registry object.
+        known_tokens: list[str] = (skills.names if skills else []) + ["none"]
+
         # Run all test cases concurrently
         tasks = [
-            self._run_single(tc, model, system_prompt, **kwargs)
+            self._run_single(tc, model, system_prompt, known_tokens, **kwargs)
             for tc in test_cases
         ]
         test_results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -214,6 +240,7 @@ class SkillSelectionBenchmark(Benchmark):
         tc: TestCase,
         model: Any,
         system_prompt: str,
+        known_tokens: list[str],
         **kwargs: Any,
     ) -> TestResult:
         from eval_framework.adapters.base import AdapterError
@@ -233,17 +260,20 @@ class SkillSelectionBenchmark(Benchmark):
                 expected=tc.expected,
             )
 
+        from benchmarks.utils import strip_think_tags, recover_answer_from_think_block
         import re
         raw_output = response.content.strip()
 
-        # Strip thinking blocks emitted by reasoning models (e.g. Qwen, DeepSeek)
-        # Handles both closed (<think>...</think>) and unclosed (<think>...) tags
-        cleaned = re.sub(r"<think(?:ing)?>\s*.*?\s*</think(?:ing)?>", "", raw_output,
-                         flags=re.DOTALL | re.IGNORECASE).strip()
-        cleaned = re.sub(r"<think(?:ing)?>.*$", "", cleaned,
-                         flags=re.DOTALL | re.IGNORECASE).strip()
+        # Strip thinking blocks emitted by reasoning models (e.g. Qwen, DeepSeek).
+        # Handles both closed (<think>...</think>) and unclosed (<think>...) tags.
+        cleaned = strip_think_tags(raw_output)
+
         if not cleaned:
-            cleaned = raw_output  # fallback if whole output was a think block
+            # The entire response was inside think tags (possibly truncated at the
+            # token limit before the model emitted a final answer).  Recover by
+            # scanning raw content for the last known valid answer token.
+            recovered = recover_answer_from_think_block(raw_output, known_tokens)
+            cleaned = recovered if recovered is not None else raw_output
 
         cleaned_lower = cleaned.lower()
 

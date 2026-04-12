@@ -16,15 +16,10 @@ from typing import Any
 SKILL_META = {
     "name": "unit_converter",
     "description": (
-        "Converts values between measurement units. "
-        "Supports length (m, km, mi, ft, in, cm, mm, yd), "
-        "weight (kg, g, lb, oz, mg, ton), "
-        "temperature (C, F, K), "
-        "volume (L, mL, gal, cup, fl_oz, tbsp, tsp), "
-        "area (m2, km2, ft2, acre, hectare), "
-        "speed (m/s, km/h, mph, knot), "
-        "time (s, min, h, day, week, year), "
-        "and data (B, KB, MB, GB, TB)."
+        "Use for converting between measurement units: "
+        "length (km, miles, feet, inches, cm), weight (kg, pounds, ounces, grams), "
+        "temperature (Celsius, Fahrenheit, Kelvin), volume (liters, gallons, cups), "
+        "and more. Use this whenever the user asks 'how many X in Y' or 'convert X to Y'."
     ),
     "trigger_patterns": [
         r"\bconvert\b",

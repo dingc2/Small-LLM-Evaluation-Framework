@@ -23,7 +23,7 @@ many practical applications on resource-constrained hardware.
 
 This project evaluates this hypothesis by:
 
-1. Testing 7 models across 4 families (Qwen, Gemma, Nemotron, GPT-OSS) at sizes from 2B to 20B
+1. Testing 10 models across 5 families (Qwen, Gemma, Nemotron, GPT-OSS, Ministral) at sizes from 2B to 20B
 2. Measuring performance with and without skill augmentation
 3. Quantifying the "skill uplift" — the score delta between tool-augmented and
    baseline conditions
@@ -53,7 +53,7 @@ eval_framework/
 │   └── end_to_end.py            #   "Does the model get the right answer?"
 ├── runner.py                    # Orchestrator (EvaluationRunner)
 ├── analyze.py                   # Result analysis & chart generation
-├── config_ollama.yaml           # Full evaluation config (6 models × 2 conditions)
+├── config_ollama.yaml           # Full evaluation config (10 models × 2 conditions)
 ├── config_quick.yaml            # Quick smoke-test config (1 model)
 ├── config.yaml                  # Example OpenAI API config
 ├── model_cards.md               # Model cards & ethical considerations
@@ -136,12 +136,12 @@ The `<run_id>` is printed when the run finishes (e.g. `20260411T120000Z`). Resul
 
 ### Experimental Design
 
-The evaluation uses a **2 × 7 × 2** factorial design:
+The evaluation uses a **2 × 10 × 2** factorial design:
 
 | Factor | Levels |
 |---|---|
 | **Skill Condition** | `all_skills` (4 tools available) vs `no_skills` (baseline) |
-| **Model** | qwen3.5:2b, qwen3.5:4b, qwen3.5:9b, gemma4:e2b, gemma4:e4b, nemotron-3-nano:4b, gpt-oss:20b |
+| **Model** | qwen3.5:2b, qwen3.5:4b, qwen3.5:9b, gemma4:e2b, gemma4:e4b, nemotron-3-nano:4b, gpt-oss:20b, ministral-3:3b, ministral-3:8b, ministral-3:14b |
 | **Benchmark** | Skill Selection Accuracy, End-to-End Task Completion |
 
 Each combination is repeated 3 times for variance estimation.
@@ -188,16 +188,15 @@ introduce non-determinism across runs (GPU scheduling, batching effects).
 Running 3 repetitions per condition provides some variance data, but more
 runs would strengthen statistical claims.
 
-**Construct validity.** The "skill uplift" metric compares different test
-case populations: the `all_skills` condition runs 25 end-to-end cases
-(including tool-dependent ones), while the `no_skills` baseline runs only
-the 2 skill-independent cases. This is intentional — tool-dependent cases
-are excluded from the baseline because they'd be unfair (a model can't use
-a calculator it doesn't have). The comparison table's `n_cases` column
-makes this asymmetry transparent. The skill uplift therefore measures
-"what the model can accomplish with tools" vs "what it can accomplish
-without," rather than a strict apples-to-apples comparison on identical
-tasks.
+**Construct validity.** The "skill uplift" metric compares the same test
+case population under two conditions: both `all_skills` and `no_skills`
+run all 20 end-to-end cases. In the `no_skills` condition, tool definitions
+are not injected into the prompt, so the model must answer from raw
+reasoning. In the `all_skills` condition, the model can optionally call
+tools to compute the answer. This is a fair apples-to-apples comparison —
+the same 20 questions under two capability conditions. The `n_cases` column
+in the comparison table confirms parity. The skill uplift therefore measures
+"what the model gains from tool access on identical tasks."
 
 **External validity.** Our 4 skills (calculator, unit converter, dictionary,
 datetime) are simple, single-hop tools. Real-world tool use often involves
@@ -242,10 +241,10 @@ for the smallest models.
 - **Prompt sensitivity**: No prompt engineering was applied per-model; all
   models receive identical system prompts. Some models may benefit from
   model-specific prompting, which could change relative rankings.
-- **Small test set**: 47 cases total (25 skill selection + 22 end-to-end)
+- **Small test set**: 45 cases total (25 skill selection + 20 end-to-end)
   means individual test case failures have outsized impact on scores. A
-  single wrong answer in the 2-case no-skills baseline changes the score
-  by 50%.
+  single wrong answer in the 20-case end-to-end benchmark changes the score
+  by 5%.
 
 ---
 

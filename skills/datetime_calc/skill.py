@@ -18,10 +18,9 @@ from typing import Any
 SKILL_META = {
     "name": "datetime_calc",
     "description": (
-        "Performs date and time calculations. "
-        "Can compute days between two dates, add or subtract days/weeks/months "
-        "from a date, find the day of the week for a date, and format dates. "
-        "Dates should be in YYYY-MM-DD format."
+        "Use for date and time questions: count days between two dates, "
+        "add or subtract days from a date, or find what day of the week a date is. "
+        "Use this whenever the user asks about dates, durations, or days of the week."
     ),
     "trigger_patterns": [
         r"\bdays?\s+(between|from|until|since|ago)\b",
