@@ -106,7 +106,7 @@ def _default_scorer(actual: Any, expected: Any, tolerance: float = _DEFAULT_TOLE
     """
     Score a model answer vs. expected value.
     Returns 1.0 for match, 0.0 otherwise.
-    Handles int/float with tolerance, and string case-insensitive match.
+    Handles int/float with tolerance, and string keyword-overlap for long strings.
     """
     if actual is None:
         return 0.0
@@ -119,8 +119,24 @@ def _default_scorer(actual: Any, expected: Any, tolerance: float = _DEFAULT_TOLE
     except (TypeError, ValueError):
         pass
 
-    # String comparison (strip, lower)
-    return 1.0 if str(actual).strip().lower() == str(expected).strip().lower() else 0.0
+    actual_s = str(actual).strip().lower()
+    expected_s = str(expected).strip().lower()
+
+    # Exact string match (for short expected values like "hello", "Thursday")
+    if actual_s == expected_s:
+        return 1.0
+
+    # Keyword overlap for longer expected strings (e.g. dictionary definitions)
+    # A model won't output a definition verbatim, so check if key terms are present
+    expected_words = set(re.findall(r"\w{3,}", expected_s))  # words with 3+ chars
+    if len(expected_words) >= 3:
+        actual_words = set(re.findall(r"\w{3,}", actual_s))
+        overlap = len(expected_words & actual_words)
+        ratio = overlap / len(expected_words)
+        return 1.0 if ratio >= 0.6 else 0.0
+
+    # Fallback: exact match for short strings
+    return 1.0 if actual_s == expected_s else 0.0
 
 
 def _extract_number(text: str) -> Optional[float]:
@@ -221,8 +237,9 @@ class EndToEndBenchmark(Benchmark):
     def _build_test_cases(self, skills: Optional[Any]) -> list[TestCase]:
         cases = []
         for c in _BUILTIN_CASES:
-            # Skip skill-dependent cases if that skill isn't loaded
-            if c.get("skill") and skills and c["skill"] not in skills:
+            # Skip skill-dependent cases when no skills are available
+            # (otherwise we'd be testing raw reasoning, not tool-use uplift)
+            if c.get("skill") and (skills is None or c["skill"] not in skills):
                 continue
             cases.append(
                 TestCase(
@@ -322,11 +339,18 @@ class EndToEndBenchmark(Benchmark):
             prompt = "\n".join(tool_outputs) + "\n\nNow provide your final answer."
 
         # Strip thinking blocks before parsing final content
+        # Handles both closed (<think>...</think>) and unclosed (<think>...) tags
         if final_content:
             import re as _re
+            # Remove properly closed blocks
             final_content_clean = _re.sub(
                 r"<think(?:ing)?>\s*.*?\s*</think(?:ing)?>", "",
                 final_content, flags=_re.DOTALL | _re.IGNORECASE
+            ).strip()
+            # Remove unclosed opening tags (model forgot to close)
+            final_content_clean = _re.sub(
+                r"<think(?:ing)?>.*$", "",
+                final_content_clean, flags=_re.DOTALL | _re.IGNORECASE
             ).strip()
             if not final_content_clean:
                 final_content_clean = final_content

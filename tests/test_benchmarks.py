@@ -373,7 +373,7 @@ def test_end_to_end_numeric_extraction():
         {"id": "t_parse", "prompt": "What is 17*23?", "expected": 391}
     ])
     result = asyncio.run(bench.run(adapter, skills=None))
-    r = result.test_results[0]
+    r = next(r for r in result.test_results if r.test_id == "t_parse")
     assert r.passed
 
 

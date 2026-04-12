@@ -237,8 +237,10 @@ class SkillSelectionBenchmark(Benchmark):
         raw_output = response.content.strip()
 
         # Strip thinking blocks emitted by reasoning models (e.g. Qwen, DeepSeek)
-        # e.g. <think>...</think> or <thinking>...</thinking>
+        # Handles both closed (<think>...</think>) and unclosed (<think>...) tags
         cleaned = re.sub(r"<think(?:ing)?>\s*.*?\s*</think(?:ing)?>", "", raw_output,
+                         flags=re.DOTALL | re.IGNORECASE).strip()
+        cleaned = re.sub(r"<think(?:ing)?>.*$", "", cleaned,
                          flags=re.DOTALL | re.IGNORECASE).strip()
         if not cleaned:
             cleaned = raw_output  # fallback if whole output was a think block

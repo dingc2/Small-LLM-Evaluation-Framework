@@ -401,6 +401,7 @@ def _build_comparison_table(results: list[BenchmarkResult]) -> list[dict[str, An
     data: dict[tuple[str, str], dict[str, list[float]]] = defaultdict(lambda: defaultdict(list))
     latency: dict[tuple[str, str, str], list[float]] = defaultdict(list)
     tokens: dict[tuple[str, str, str], list[int]] = defaultdict(list)
+    test_counts: dict[tuple[str, str, str], list[int]] = defaultdict(list)
 
     for r in results:
         sc_name = r.metadata.get("skill_config_name", "unknown")
@@ -408,6 +409,7 @@ def _build_comparison_table(results: list[BenchmarkResult]) -> list[dict[str, An
         data[key][sc_name].append(r.score)
         latency[(r.model_name, r.benchmark_name, sc_name)].append(r.avg_latency_ms)
         tokens[(r.model_name, r.benchmark_name, sc_name)].append(r.total_tokens)
+        test_counts[(r.model_name, r.benchmark_name, sc_name)].append(r.total_tests)
 
     rows: list[dict[str, Any]] = []
     for (model, bench), sc_scores in sorted(data.items()):
@@ -436,12 +438,21 @@ def _build_comparison_table(results: list[BenchmarkResult]) -> list[dict[str, An
             else:
                 delta = "n/a"
 
+            # Average number of test cases (important: with_skills and
+            # no_skills conditions may run different numbers of cases)
+            tc_key = (model, bench, sc_name)
+            avg_cases = (
+                sum(test_counts[tc_key]) / len(test_counts[tc_key])
+                if test_counts[tc_key] else 0
+            )
+
             rows.append({
                 "model": model,
                 "benchmark": bench,
                 "skill_config": sc_name,
                 "score": f"{avg_score:.3f}",
                 "pass_rate": f"{avg_score:.1%}",
+                "n_cases": int(avg_cases),
                 "avg_latency_ms": f"{avg_lat:.1f}",
                 "avg_tokens": f"{avg_tok:.0f}",
                 "skill_delta": delta,

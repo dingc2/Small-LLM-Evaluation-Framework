@@ -178,6 +178,77 @@ performance beyond its raw reasoning capability.
 
 ---
 
+## Critical Analysis
+
+### Threats to Validity
+
+**Internal validity.** Temperature is fixed at 0.0, which should produce
+deterministic outputs. However, Ollama's quantised inference can still
+introduce non-determinism across runs (GPU scheduling, batching effects).
+Running 3 repetitions per condition provides some variance data, but more
+runs would strengthen statistical claims.
+
+**Construct validity.** The "skill uplift" metric compares different test
+case populations: the `all_skills` condition runs 25 end-to-end cases
+(including tool-dependent ones), while the `no_skills` baseline runs only
+the 2 skill-independent cases. This is intentional — tool-dependent cases
+are excluded from the baseline because they'd be unfair (a model can't use
+a calculator it doesn't have). The comparison table's `n_cases` column
+makes this asymmetry transparent. The skill uplift therefore measures
+"what the model can accomplish with tools" vs "what it can accomplish
+without," rather than a strict apples-to-apples comparison on identical
+tasks.
+
+**External validity.** Our 4 skills (calculator, unit converter, dictionary,
+datetime) are simple, single-hop tools. Real-world tool use often involves
+multi-hop reasoning, API chaining, and error recovery. Results may not
+generalise to more complex tool ecosystems.
+
+### Notable Findings & Anomalies
+
+**Gemma4:e2b anomaly.** In initial runs, Gemma4:e2b scored only 40% on
+end-to-end tasks *with* skills but 75% *without* skills — a negative uplift.
+This appears to stem from the model struggling with tool-call formatting
+rather than reasoning. It could select the right skill but often failed to
+produce correctly structured tool-call JSON, causing the tool execution to
+fail silently and the model to fall back to (incorrect) raw reasoning.
+This finding is itself interesting: it suggests that tool-call formatting
+is a distinct capability that smaller models may not acquire reliably.
+
+**Qwen3.5 thinking blocks.** Qwen3.5 models emit `<think>...</think>`
+reasoning traces before their answer. The benchmark parser strips these
+blocks before extracting the final answer. Without this preprocessing,
+skill selection accuracy drops to ~28% as the parser reads the thinking
+trace instead of the actual answer. This highlights a practical concern:
+thinking/reasoning models require adapter-level awareness of their output
+format.
+
+**Diminishing returns.** Within the Qwen3.5 family (2B → 4B → 9B), the
+skill uplift *decreases* as model size grows — because larger models
+already perform well without tools. The 2B model benefits most from skill
+augmentation (Δ+55%), while the 9B model's uplift is smaller (Δ+25%).
+This supports the hypothesis that tool augmentation is especially valuable
+for the smallest models.
+
+### Methodology Limitations
+
+- **Quantisation transparency**: All models use Ollama's default quantisation
+  (typically Q4_K_M), but the exact quantisation scheme varies by model.
+  This is a confound — performance differences could stem from quantisation
+  quality rather than architecture.
+- **Single hardware environment**: All benchmarks ran on a single 24 GB Apple
+  Silicon MacBook Pro. Latency numbers are hardware-specific and should not
+  be compared to cloud-hosted results.
+- **Prompt sensitivity**: No prompt engineering was applied per-model; all
+  models receive identical system prompts. Some models may benefit from
+  model-specific prompting, which could change relative rankings.
+- **Small test set**: 47 cases total (25 skill selection + 22 end-to-end)
+  means individual test case failures have outsized impact on scores. A
+  single wrong answer in the 2-case no-skills baseline changes the score
+  by 50%.
+
+---
+
 ## Results & Analysis
 
 After running the evaluation, use the analysis module:

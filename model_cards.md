@@ -119,6 +119,9 @@ The evaluation dataset consists of **47 hand-crafted test cases** across two ben
 - English-only queries do not test multilingual capabilities
 - Skills are simple (no multi-hop reasoning or complex API chains)
 - Quantised models may perform differently from full-precision versions
+- The `all_skills` and `no_skills` conditions run different numbers of test cases (25 vs 2 for E2E), making direct score comparison nuanced — the comparison table includes `n_cases` for transparency
+- Keyword-overlap scoring for dictionary definitions (≥60% overlap threshold) is a rough heuristic; more sophisticated semantic similarity scoring (e.g. BERTScore) would be more rigorous
+- Temperature=0.0 does not guarantee fully deterministic outputs under quantised inference; 3 runs provide some variance estimate but more would be ideal
 
 ---
 

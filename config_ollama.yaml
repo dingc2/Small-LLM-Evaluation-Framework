@@ -102,6 +102,6 @@ benchmarks:
 # ----------------------------------------------------------
 # 5. Runner settings
 # ----------------------------------------------------------
-runs: 1              # 1 run = ~25–45 min; increase to 3 for variance data
+runs: 3              # 3 runs for variance data; ~75–135 min total
 concurrency: 1       # Sequential — Ollama runs one model at a time
 output_dir: ./results
