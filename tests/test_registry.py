@@ -138,6 +138,13 @@ def _run_calc(expression: str) -> SkillOutput:
     return asyncio.run(calc.execute(si))
 
 
+def _run_skill(name: str, query: str, parameters: dict | None = None) -> SkillOutput:
+    reg = _make_registry()
+    skill = reg.get(name)
+    si = SkillInput(query=query, parameters=parameters or {})
+    return asyncio.run(skill.execute(si))
+
+
 def test_calc_basic_addition():
     out = _run_calc("2 + 2")
     assert out.success
@@ -176,6 +183,12 @@ def test_calc_modulo():
 
 def test_calc_power():
     out = _run_calc("2 ** 10")
+    assert out.success
+    assert out.result == 1024
+
+
+def test_calc_caret_treated_as_power():
+    out = _run_calc("2 ^ 10")
     assert out.success
     assert out.result == 1024
 
@@ -254,3 +267,93 @@ def test_calc_metadata_contains_expression():
 def test_calc_metadata_contains_type():
     out = _run_calc("2 + 2")
     assert "type" in out.metadata
+
+
+# ---------------------------------------------------------------------------
+# Tests: Unit converter skill execute()
+# ---------------------------------------------------------------------------
+
+
+def test_unit_converter_km_to_miles():
+    out = _run_skill("unit_converter", "convert 5 km to miles")
+    assert out.success
+    assert math.isclose(out.result, 3.106856, rel_tol=1e-6)
+
+
+def test_unit_converter_temperature_f_to_c():
+    out = _run_skill("unit_converter", "convert 41 F to C")
+    assert out.success
+    assert math.isclose(out.result, 5.0, abs_tol=1e-6)
+
+
+def test_unit_converter_cross_category_fails():
+    out = _run_skill("unit_converter", "convert 5 km to kg")
+    assert not out.success
+    assert out.error is not None
+    assert "Cannot convert between" in out.error
+
+
+def test_unit_converter_structured_params():
+    out = _run_skill(
+        "unit_converter",
+        "",
+        parameters={"value": 1, "from_unit": "kg", "to_unit": "lb"},
+    )
+    assert out.success
+    assert math.isclose(out.result, 2.204624, rel_tol=1e-6)
+
+
+# ---------------------------------------------------------------------------
+# Tests: Dictionary skill execute()
+# ---------------------------------------------------------------------------
+
+
+def test_dictionary_define_word_from_query():
+    out = _run_skill("dictionary", "define ephemeral")
+    assert out.success
+    assert "short time" in out.result
+    assert out.metadata.get("word") == "ephemeral"
+
+
+def test_dictionary_word_from_params():
+    out = _run_skill("dictionary", "", parameters={"word": "entropy"})
+    assert out.success
+    assert "uncertainty" in out.result
+    assert out.metadata.get("part_of_speech") == "noun"
+
+
+def test_dictionary_unknown_word_fails():
+    out = _run_skill("dictionary", "define definitely_not_a_real_word")
+    assert not out.success
+    assert out.error is not None
+    assert "not found" in out.error.lower()
+
+
+# ---------------------------------------------------------------------------
+# Tests: DateTime skill execute()
+# ---------------------------------------------------------------------------
+
+
+def test_datetime_days_between():
+    out = _run_skill("datetime_calc", "days between 2024-01-01 and 2024-01-31")
+    assert out.success
+    assert out.result == 30
+
+
+def test_datetime_add_days():
+    out = _run_skill("datetime_calc", "add 10 days to 2024-01-15")
+    assert out.success
+    assert out.result == "2024-01-25"
+
+
+def test_datetime_day_of_week():
+    out = _run_skill("datetime_calc", "what day of the week is 2024-07-04")
+    assert out.success
+    assert out.result == "Thursday"
+
+
+def test_datetime_bad_query_fails():
+    out = _run_skill("datetime_calc", "tell me the weather tomorrow")
+    assert not out.success
+    assert out.error is not None
+    assert "could not parse" in out.error.lower()

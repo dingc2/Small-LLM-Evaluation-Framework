@@ -393,7 +393,7 @@ class EndToEndBenchmark(Benchmark):
         # Strip thinking blocks before parsing final content.
         # Falls back to original if stripping produces empty (model put everything in tags).
         if final_content:
-            from benchmarks.utils import strip_think_tags
+            from .utils import strip_think_tags
             final_content_clean = strip_think_tags(final_content) or final_content
         else:
             final_content_clean = final_content or ""

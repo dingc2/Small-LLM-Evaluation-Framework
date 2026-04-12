@@ -157,11 +157,11 @@ def _convert_temperature(value: float, from_unit: str, to_unit: str) -> float:
 
     # From Celsius to target
     if t == "C":
-        return round(c, 4)
+        return round(c, 6)
     elif t == "F":
-        return round(c * 9 / 5 + 32, 4)
+        return round(c * 9 / 5 + 32, 6)
     elif t == "K":
-        return round(c + 273.15, 4)
+        return round(c + 273.15, 6)
     else:
         raise ValueError(f"Unknown temperature unit: {to_unit!r}")
 

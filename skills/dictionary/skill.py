@@ -7,6 +7,7 @@ This simulates a real dictionary API tool that the model must learn to invoke.
 
 from __future__ import annotations
 
+import re
 from typing import Any
 
 # ---------------------------------------------------------------------------
@@ -119,8 +120,6 @@ _DICTIONARY: dict[str, dict[str, str]] = {
         "example": "Higher entropy in the output distribution indicates less confident predictions.",
     },
 }
-
-import re
 
 
 def _extract_word(query: str) -> str:

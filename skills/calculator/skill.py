@@ -86,7 +86,6 @@ _BINARY_OPS: dict[type, Any] = {
     ast.FloorDiv: operator.floordiv,
     ast.Mod: operator.mod,
     ast.Pow: operator.pow,
-    ast.BitXor: operator.xor,  # allow ^ as xor (not power — use ** for that)
 }
 
 _UNARY_OPS: dict[type, Any] = {
@@ -179,10 +178,11 @@ class _SafeEvaluator(ast.NodeVisitor):
 
 def _evaluate_expression(expr: str) -> Any:
     """Parse and safely evaluate an arithmetic expression string."""
-    # Normalise: replace ^ with ** only when used as power (heuristic)
     expr = expr.strip()
     # Strip leading/trailing quotes that might come from a model
     expr = re.sub(r"^['\"]|['\"]$", "", expr)
+    # LLMs often emit ^ for exponentiation; map it to Python power operator.
+    expr = re.sub(r"\^", "**", expr)
 
     try:
         tree = ast.parse(expr, mode="eval")

@@ -260,7 +260,7 @@ class SkillSelectionBenchmark(Benchmark):
                 expected=tc.expected,
             )
 
-        from benchmarks.utils import strip_think_tags, recover_answer_from_think_block
+        from .utils import strip_think_tags, recover_answer_from_think_block
         import re
         raw_output = response.content.strip()
 
