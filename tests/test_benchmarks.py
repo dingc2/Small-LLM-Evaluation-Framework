@@ -99,6 +99,23 @@ class RoutingAdapter(ModelAdapter):
         "calculate": "calculator",
         "compute": "calculator",
         "sqrt": "calculator",
+        "evaluate": "calculator",
+        "solve": "calculator",
+        "convert": "unit_converter",
+        "pounds": "unit_converter",
+        "miles": "unit_converter",
+        "fahrenheit": "unit_converter",
+        "gallons": "unit_converter",
+        "inches": "unit_converter",
+        "define": "dictionary",
+        "meaning": "dictionary",
+        "definition": "dictionary",
+        "dictionary": "dictionary",
+        "days between": "datetime_calc",
+        "day of the week": "datetime_calc",
+        "add 30 days": "datetime_calc",
+        "how many days": "datetime_calc",
+        "what day": "datetime_calc",
     }
 
     @property

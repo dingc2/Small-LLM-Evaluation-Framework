@@ -196,6 +196,13 @@ def _build_adapter(cfg: ModelConfig) -> ModelAdapter:
             model_path=cfg.model_path or "",
             **cfg.kwargs,
         )
+    elif t == "ollama":
+        from eval_framework.adapters.ollama_adapter import OllamaAdapter
+        return OllamaAdapter(
+            model=cfg.model or "gemma3:4b",
+            host=cfg.base_url or "http://localhost:11434",
+            default_kwargs=cfg.kwargs,
+        )
     else:
         raise ValueError(f"Unknown adapter type: {cfg.type!r}")
 

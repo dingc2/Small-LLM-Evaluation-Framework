@@ -45,6 +45,8 @@ _NO_SKILL_CASES: list[dict[str, Any]] = [
     {"id": "no_skill_01", "prompt": "Tell me a joke.", "expected": "none"},
     {"id": "no_skill_02", "prompt": "What is the capital of France?", "expected": "none"},
     {"id": "no_skill_03", "prompt": "Write a haiku about spring.", "expected": "none"},
+    {"id": "no_skill_04", "prompt": "Explain how photosynthesis works.", "expected": "none"},
+    {"id": "no_skill_05", "prompt": "Summarize the plot of Romeo and Juliet.", "expected": "none"},
 ]
 
 # Built-in calculator cases
@@ -54,6 +56,33 @@ _CALCULATOR_CASES: list[dict[str, Any]] = [
     {"id": "calc_sel_03", "prompt": "Compute 2 ** 16", "expected": "calculator"},
     {"id": "calc_sel_04", "prompt": "Evaluate sin(0) + cos(0)", "expected": "calculator"},
     {"id": "calc_sel_05", "prompt": "Solve (100 / 4) - 7", "expected": "calculator"},
+]
+
+# Unit converter cases
+_UNIT_CONVERTER_CASES: list[dict[str, Any]] = [
+    {"id": "conv_sel_01", "prompt": "Convert 5 kilometers to miles", "expected": "unit_converter"},
+    {"id": "conv_sel_02", "prompt": "How many pounds in 10 kg?", "expected": "unit_converter"},
+    {"id": "conv_sel_03", "prompt": "Convert 100 fahrenheit to celsius", "expected": "unit_converter"},
+    {"id": "conv_sel_04", "prompt": "Convert 2 gallons to liters", "expected": "unit_converter"},
+    {"id": "conv_sel_05", "prompt": "How many inches in 3 feet?", "expected": "unit_converter"},
+]
+
+# Dictionary cases
+_DICTIONARY_CASES: list[dict[str, Any]] = [
+    {"id": "dict_sel_01", "prompt": "Define the word 'ephemeral'", "expected": "dictionary"},
+    {"id": "dict_sel_02", "prompt": "What does ubiquitous mean?", "expected": "dictionary"},
+    {"id": "dict_sel_03", "prompt": "Give me the definition of algorithm", "expected": "dictionary"},
+    {"id": "dict_sel_04", "prompt": "Look up the word 'paradigm' in the dictionary", "expected": "dictionary"},
+    {"id": "dict_sel_05", "prompt": "What is the meaning of quantization?", "expected": "dictionary"},
+]
+
+# Date/time calculator cases
+_DATETIME_CASES: list[dict[str, Any]] = [
+    {"id": "date_sel_01", "prompt": "How many days between 2024-01-01 and 2024-12-31?", "expected": "datetime_calc"},
+    {"id": "date_sel_02", "prompt": "What day of the week is 2024-07-04?", "expected": "datetime_calc"},
+    {"id": "date_sel_03", "prompt": "Add 30 days to 2024-01-15", "expected": "datetime_calc"},
+    {"id": "date_sel_04", "prompt": "How many days from 2024-03-01 to 2024-06-15?", "expected": "datetime_calc"},
+    {"id": "date_sel_05", "prompt": "What day is 2024-12-25?", "expected": "datetime_calc"},
 ]
 
 
@@ -143,9 +172,15 @@ class SkillSelectionBenchmark(Benchmark):
     def _build_test_cases(self, skills: Optional[Any]) -> list[TestCase]:
         cases: list[dict[str, Any]] = []
 
-        # Include calculator cases only when calculator is registered
+        # Include skill-specific cases only when that skill is registered
         if skills and "calculator" in skills:
             cases.extend(_CALCULATOR_CASES)
+        if skills and "unit_converter" in skills:
+            cases.extend(_UNIT_CONVERTER_CASES)
+        if skills and "dictionary" in skills:
+            cases.extend(_DICTIONARY_CASES)
+        if skills and "datetime_calc" in skills:
+            cases.extend(_DATETIME_CASES)
 
         if self._include_no_skill:
             cases.extend(_NO_SKILL_CASES)

@@ -1,0 +1,107 @@
+# ============================================================
+# Small LLM Skill-Uplift Evaluation — Your Models
+# ============================================================
+#
+# Research question: Can small LLMs with skill/tool access match
+# or exceed larger LLMs without skills?
+#
+# Models (already pulled):
+#   nemotron-3-nano:4b   ~2.8 GB  (NVIDIA)
+#   qwen3.5:2b           ~2.7 GB  (Alibaba)
+#   qwen3.5:4b           ~3.4 GB  (Alibaba)
+#   qwen3.5:9b           ~6.6 GB  (Alibaba)
+#   gpt-oss:20b          ~13 GB   (OpenGPT)
+#   gemma4:e2b           ~7.2 GB  (Google)
+#   gemma4:e4b           ~9.6 GB  (Google)
+#
+# Run:
+#   cd eval_framework
+#   python -m eval_framework.runner --config config_ollama.yaml --verbose
+
+# ----------------------------------------------------------
+# 1. Models — ordered smallest to largest
+# ----------------------------------------------------------
+models:
+  # ---------- Qwen 3.5 family (size ladder) ----------
+  - type: ollama
+    model: qwen3.5:2b
+    kwargs:
+      temperature: 0.0
+      num_predict: 512
+
+  - type: ollama
+    model: qwen3.5:4b
+    kwargs:
+      temperature: 0.0
+      num_predict: 512
+
+  - type: ollama
+    model: qwen3.5:9b
+    kwargs:
+      temperature: 0.0
+      num_predict: 512
+
+  # ---------- Gemma 4 family ----------
+  - type: ollama
+    model: gemma4:e2b
+    kwargs:
+      temperature: 0.0
+      num_predict: 512
+
+  - type: ollama
+    model: gemma4:e4b
+    kwargs:
+      temperature: 0.0
+      num_predict: 512
+
+  # ---------- Other families ----------
+  - type: ollama
+    model: nemotron-3-nano:4b
+    kwargs:
+      temperature: 0.0
+      num_predict: 512
+
+  - type: ollama
+    model: gpt-oss:20b
+    kwargs:
+      temperature: 0.0
+      num_predict: 512
+
+# ----------------------------------------------------------
+# 2. Skill directory
+# ----------------------------------------------------------
+skills_dir: ./skills
+
+# ----------------------------------------------------------
+# 3. Skill configurations (the key comparison)
+# ----------------------------------------------------------
+skill_configs:
+  # All 4 skills enabled — calculator, unit_converter, dictionary, datetime_calc
+  - name: all_skills
+    enabled: []
+
+  # Baseline — no skills (raw model reasoning only)
+  - name: no_skills
+    enabled: null
+
+# ----------------------------------------------------------
+# 4. Benchmarks
+# ----------------------------------------------------------
+benchmarks:
+  - type: skill_selection_accuracy
+    kwargs:
+      include_no_skill_cases: true
+      temperature: 0.0
+
+  - type: end_to_end_task_completion
+    kwargs:
+      max_turns: 3
+      temperature: 0.0
+      float_tolerance: 1.0e-2
+
+# ----------------------------------------------------------
+# 5. Runner settings
+# ----------------------------------------------------------
+runs: 3              # 3 runs for variance measurement
+concurrency: 1       # Sequential — Ollama runs one model at a time
+output_dir: ./results

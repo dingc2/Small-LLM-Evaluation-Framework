@@ -16,6 +16,13 @@
 pydantic>=2.0
 pyyaml>=6.0
 openai>=1.14          # OpenAIAdapter (also works with vLLM / Ollama / etc.)
+httpx>=0.25           # OllamaAdapter (native Ollama API)
+
+# ----------------------------------------------------------
+# Analysis & visualisation
+# ----------------------------------------------------------
+matplotlib>=3.8
+numpy>=1.24
 
 # ----------------------------------------------------------
 # Testing

@@ -41,8 +41,9 @@ After using a tool (if needed), provide your final answer as a plain number
 or short string — nothing else. Do not include units or extra explanation.
 """
 
-# Built-in test cases (calculator-based)
+# Built-in test cases — organised by skill
 _BUILTIN_CASES: list[dict[str, Any]] = [
+    # --- Calculator ---
     {"id": "e2e_calc_01", "prompt": "What is 17 * 23?",
      "expected": 391, "skill": "calculator", "expression": "17 * 23"},
     {"id": "e2e_calc_02", "prompt": "Calculate sqrt(625)",
@@ -56,8 +57,44 @@ _BUILTIN_CASES: list[dict[str, Any]] = [
     {"id": "e2e_calc_06", "prompt": "Round pi to 4 decimal places (compute pi)",
      "expected": math.pi, "skill": "calculator", "expression": "pi",
      "tolerance": 0.0001},
+
+    # --- Unit Converter ---
+    {"id": "e2e_conv_01", "prompt": "Convert 5 km to miles",
+     "expected": 3.10686, "skill": "unit_converter", "tolerance": 0.001},
+    {"id": "e2e_conv_02", "prompt": "Convert 100 F to C",
+     "expected": 37.7778, "skill": "unit_converter", "tolerance": 0.01},
+    {"id": "e2e_conv_03", "prompt": "Convert 1 kg to lb",
+     "expected": 2.20462, "skill": "unit_converter", "tolerance": 0.001},
+    {"id": "e2e_conv_04", "prompt": "Convert 1 gal to L",
+     "expected": 3.78541, "skill": "unit_converter", "tolerance": 0.001},
+    {"id": "e2e_conv_05", "prompt": "Convert 12 inches to cm",
+     "expected": 30.48, "skill": "unit_converter", "tolerance": 0.01},
+
+    # --- Dictionary ---
+    {"id": "e2e_dict_01", "prompt": "Define the word ephemeral",
+     "expected": "lasting for a very short time", "skill": "dictionary"},
+    {"id": "e2e_dict_02", "prompt": "What does algorithm mean?",
+     "expected": "a process or set of rules to be followed in calculations or other problem-solving operations",
+     "skill": "dictionary"},
+    {"id": "e2e_dict_03", "prompt": "Define quantization",
+     "expected": "the process of reducing the precision of a model's weights to decrease memory usage and increase speed",
+     "skill": "dictionary"},
+
+    # --- Date/Time Calculator ---
+    {"id": "e2e_date_01", "prompt": "How many days between 2024-01-01 and 2024-12-31?",
+     "expected": 365, "skill": "datetime_calc"},
+    {"id": "e2e_date_02", "prompt": "What day of the week is 2024-07-04?",
+     "expected": "Thursday", "skill": "datetime_calc"},
+    {"id": "e2e_date_03", "prompt": "Add 30 days to 2024-01-15",
+     "expected": "2024-02-14", "skill": "datetime_calc"},
+    {"id": "e2e_date_04", "prompt": "How many days between 2024-03-01 and 2024-03-15?",
+     "expected": 14, "skill": "datetime_calc"},
+
+    # --- No-tool baselines ---
     {"id": "e2e_no_tool_01", "prompt": "Say exactly: hello",
      "expected": "hello", "skill": None},
+    {"id": "e2e_no_tool_02", "prompt": "What is 2 + 2? Reply with just the number.",
+     "expected": 4, "skill": None},
 ]
 
 # Default float comparison tolerance

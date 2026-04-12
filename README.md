@@ -1,7 +1,33 @@
-# LLM Skill-Evaluation Framework
+# Small-LLM Skill-Uplift Evaluation Framework
 
-A modular, async-first Python framework for benchmarking LLM skill-use
-accuracy across multiple models, skill configurations, and task types.
+**Research Question:** Can small open-source LLMs (<20B parameters) with access to
+skill/tool augmentation match or exceed larger models operating without tools?
+
+This framework evaluates the **skill uplift** — the performance improvement gained
+when small language models are given access to external tools (calculator, unit
+converter, dictionary, date/time calculator) — and compares models across the Gemma,
+Llama, and Qwen families.
+
+---
+
+## Problem Statement
+
+Large language models (LLMs) demonstrate impressive reasoning capabilities, but
+deploying them requires significant computational resources. Small LLMs (1–20B
+parameters) can run locally on consumer hardware but often lack the raw accuracy of
+their larger counterparts.
+
+**Hypothesis:** Augmenting small LLMs with structured tool access (skills) can
+significantly close the performance gap with larger models, making them viable for
+many practical applications on resource-constrained hardware.
+
+This project evaluates this hypothesis by:
+
+1. Testing 7 models across 4 families (Qwen, Gemma, Nemotron, GPT-OSS) at sizes from 2B to 20B
+2. Measuring performance with and without skill augmentation
+3. Quantifying the "skill uplift" — the score delta between tool-augmented and
+   baseline conditions
+4. Analysing the tradeoff between model size, latency, and accuracy
 
 ---
 
@@ -9,312 +35,255 @@ accuracy across multiple models, skill configurations, and task types.
 
 ```
 eval_framework/
-├── adapters/                   # ModelAdapter subclasses
-│   ├── base.py                 #   ABC + ToolDefinition / ModelResponse
-│   ├── openai_adapter.py       #   OpenAI-compatible (also vLLM, Ollama, …)
-│   ├── huggingface_adapter.py  #   Local HuggingFace Transformers
-│   └── llamacpp_adapter.py     #   GGUF via llama-cpp-python
-├── skills/                     # Self-contained skill modules
-│   ├── registry.py             #   Dynamic loader + SkillRegistry
-│   └── calculator/             #   Example skill
-│       ├── SKILL.md            #     Description & trigger patterns
-│       └── skill.py            #     SKILL_META + execute()
-├── benchmarks/                 # Benchmark subclasses
-│   ├── base.py                 #   ABC + BenchmarkResult / TestCase / TestResult
-│   ├── skill_selection.py      #   "Which skill should be called?"
-│   └── end_to_end.py           #   "Does the model get the right answer?"
-├── runner.py                   # Orchestrator (EvaluationRunner)
-├── config.yaml                 # Example configuration
-├── results/                    # Auto-created output directory
+├── adapters/                    # Model adapter layer
+│   ├── base.py                  #   ABC + ToolDefinition / ModelResponse
+│   ├── openai_adapter.py        #   OpenAI-compatible API
+│   ├── ollama_adapter.py        #   Ollama native API (recommended for local)
+│   ├── huggingface_adapter.py   #   Local HuggingFace Transformers
+│   └── llamacpp_adapter.py      #   GGUF via llama-cpp-python
+├── skills/                      # Self-contained skill modules
+│   ├── registry.py              #   Dynamic loader + SkillRegistry
+│   ├── calculator/              #   Arithmetic expression evaluator
+│   ├── unit_converter/          #   Measurement unit conversion
+│   ├── dictionary/              #   Word definition lookup
+│   └── datetime_calc/           #   Date arithmetic & day-of-week
+├── benchmarks/                  # Evaluation benchmarks
+│   ├── base.py                  #   ABC + BenchmarkResult / TestCase / TestResult
+│   ├── skill_selection.py       #   "Which skill should be called?"
+│   └── end_to_end.py            #   "Does the model get the right answer?"
+├── runner.py                    # Orchestrator (EvaluationRunner)
+├── analyze.py                   # Result analysis & chart generation
+├── config_ollama.yaml           # Full evaluation config (6 models × 2 conditions)
+├── config_quick.yaml            # Quick smoke-test config (1 model)
+├── config.yaml                  # Example OpenAI API config
+├── model_cards.md               # Model cards & ethical considerations
+├── results/                     # Auto-created output directory
 ├── tests/
 │   ├── test_adapters.py
 │   ├── test_registry.py
 │   └── test_benchmarks.py
 ├── requirements.txt
-├── requirements-hf.txt         # Optional: HuggingFace extras
-└── requirements-llamacpp.txt   # Optional: llama.cpp extras
+├── requirements-hf.txt
+└── requirements-llamacpp.txt
 ```
 
 ---
 
-## Installation
+## Setup & Installation
+
+### Prerequisites
+
+- **Python 3.10+**
+- **Ollama** (for local model inference): https://ollama.com
+- **24 GB MacBook Pro** (or equivalent — all tested models fit in 24 GB)
+
+### Step 1: Install Dependencies
 
 ```bash
-# 1. Clone / copy the eval_framework/ folder into your project root.
-
-# 2. Install core dependencies (Python 3.10+ required):
-pip install -r eval_framework/requirements.txt
-
-# 3. Optional: HuggingFace local models
-pip install -r eval_framework/requirements-hf.txt
-
-# 4. Optional: llama.cpp GGUF models (CPU)
-pip install -r eval_framework/requirements-llamacpp.txt
-# GPU (CUDA):
-# CMAKE_ARGS="-DLLAMA_CUDA=on" pip install llama-cpp-python --force-reinstall
-```
-
----
-
-## Quickstart
-
-### Run from YAML config
-
-```bash
-# Set your OpenAI key:
-export OPENAI_API_KEY=sk-...
-
-# Run the full evaluation sweep:
 cd eval_framework
-python -m eval_framework.runner --config config.yaml --verbose
+pip install -r requirements.txt
+pip install httpx matplotlib numpy   # For Ollama adapter + visualisations
 ```
 
-Results are auto-saved to `results/<run_id>_results.json` and
-`results/<run_id>_summary.csv`.
+### Step 2: Install Ollama & Pull Models
+
+```bash
+# Install Ollama (macOS)
+brew install ollama
+# Or download from https://ollama.com
+
+# Start the Ollama server
+ollama serve
+
+# Pull models (in a separate terminal)
+ollama pull qwen3.5:2b          # ~2.7 GB
+ollama pull qwen3.5:4b          # ~3.4 GB
+ollama pull qwen3.5:9b          # ~6.6 GB
+ollama pull gemma4:e2b          # ~7.2 GB
+ollama pull gemma4:e4b          # ~9.6 GB
+ollama pull nemotron-3-nano:4b  # ~2.8 GB
+ollama pull gpt-oss:20b         # ~13 GB
+```
+
+### Step 3: Smoke Test
+
+```bash
+# Quick test with a single model to verify everything works
+python -m eval_framework.runner --config config_quick.yaml --verbose
+```
+
+### Step 4: Full Evaluation
+
+```bash
+# Run the full 6-model × 2-condition sweep (takes ~30–60 minutes)
+python -m eval_framework.runner --config config_ollama.yaml --verbose
+```
+
+### Step 5: Analyse Results
+
+```bash
+# Generate summary + charts
+python -m eval_framework.analyze results/<run_id>_results.json
+```
 
 ---
 
-### Programmatic usage
+## Methodology
 
-```python
-import asyncio
-from eval_framework.runner import EvaluationRunner
+### Experimental Design
 
-async def main():
-    runner = EvaluationRunner.from_yaml("eval_framework/config.yaml")
-    summary = await runner.run_all()
-    summary.print_table()           # ASCII comparison table
-    summary.save_json("out.json")   # Full JSON results
-    summary.save_csv("out.csv")     # Flat CSV for spreadsheets
+The evaluation uses a **2 × 7 × 2** factorial design:
 
-asyncio.run(main())
+| Factor | Levels |
+|---|---|
+| **Skill Condition** | `all_skills` (4 tools available) vs `no_skills` (baseline) |
+| **Model** | qwen3.5:2b, qwen3.5:4b, qwen3.5:9b, gemma4:e2b, gemma4:e4b, nemotron-3-nano:4b, gpt-oss:20b |
+| **Benchmark** | Skill Selection Accuracy, End-to-End Task Completion |
+
+Each combination is repeated 3 times for variance estimation.
+
+### Skills (Tools)
+
+| Skill | Purpose | Example |
+|---|---|---|
+| **Calculator** | Arithmetic & math functions | `sqrt(625)` → `25.0` |
+| **Unit Converter** | Measurement conversion | `5 km to miles` → `3.107` |
+| **Dictionary** | Word definitions | `define ephemeral` → `lasting for a very short time` |
+| **Date/Time Calc** | Date arithmetic | `days between 2024-01-01 and 2024-12-31` → `365` |
+
+### Benchmarks
+
+**1. Skill Selection Accuracy** — Can the model route a query to the correct tool?
+- 25 test cases: 5 per skill + 5 negative ("none") cases
+- Binary scoring: exact match = 1.0, otherwise 0.0
+- Protocol: system prompt lists available skills; model must output ONLY the skill name
+
+**2. End-to-End Task Completion** — Does the model get the right final answer?
+- 20 test cases spanning all 4 skills + 2 no-tool baselines
+- Multi-turn: model can call a tool, receive the result, and produce a final answer
+- Scoring: numeric tolerance (±0.01) for math, exact match for strings
+
+### Key Metric: Skill Uplift
+
+```
+skill_uplift = score(model, all_skills) − score(model, no_skills)
 ```
 
-### With-skills vs without-skills delta
-
-```python
-from eval_framework.runner import compare_results
-
-delta_table = compare_results(
-    summary.results,
-    with_skills_config="all_skills",
-    without_skills_config="no_skills",
-)
-for row in delta_table:
-    print(row)
-```
+A positive uplift indicates the model successfully leverages tools to improve
+performance beyond its raw reasoning capability.
 
 ---
 
-## Adding a New Model
+## Results & Analysis
 
-Create a new file in `adapters/` that subclasses `ModelAdapter`:
+After running the evaluation, use the analysis module:
 
-```python
-# adapters/my_provider_adapter.py
-from eval_framework.adapters.base import ModelAdapter, ModelResponse, ToolDefinition
-
-class MyProviderAdapter(ModelAdapter):
-
-    @property
-    def model_name(self) -> str:
-        return "my-model-v1"
-
-    async def generate(self, prompt, tools=None, system_prompt=None, **kwargs) -> ModelResponse:
-        # ... call your API here ...
-        return ModelResponse(content="...", model_name=self.model_name)
+```bash
+python -m eval_framework.analyze results/<run_id>_results.json
 ```
 
-Then reference it in `config.yaml`:
+This generates:
+
+| Output | Description |
+|---|---|
+| Terminal summary table | Score, pass rate, latency, skill delta per model |
+| `skill_uplift.png` | Bar chart of skill uplift per model |
+| `score_heatmap.png` | Heatmap of scores across all conditions |
+| `latency_comparison.png` | Inference latency by model |
+| `size_vs_score.png` | Model parameters vs. performance scatter |
+| `per_skill_breakdown.png` | Per-skill pass rates |
+
+---
+
+## Extending the Framework
+
+### Adding a New Model
+
+The Ollama adapter supports any model available in the Ollama library.
+Just pull it and add to the config:
+
+```bash
+ollama pull mistral:7b
+```
 
 ```yaml
 models:
-  - type: my_provider       # add a case in runner._build_adapter()
-    model: my-model-v1
+  - type: ollama
+    model: mistral:7b
+    kwargs:
+      temperature: 0.0
 ```
 
-Or pass it directly to the runner:
+### Adding a New Skill
+
+Create a folder under `skills/` with `skill.py` defining `SKILL_META` and `execute()`:
 
 ```python
-from eval_framework.runner import EvaluationRunner, RunnerConfig, ModelConfig
-from my_adapter import MyProviderAdapter
-
-# Bypass the config factory entirely — inject the adapter at runtime
-runner = EvaluationRunner(config)
-# Use the programmatic API described below.
-```
-
----
-
-## Adding a New Skill
-
-1. Create a subfolder under `skills/`:
-
-```
-skills/
-  web_search/
-    SKILL.md       ← human-readable description (not parsed by the framework)
-    skill.py       ← must define SKILL_META and execute()
-```
-
-2. Define `SKILL_META` and `execute()` in `skill.py`:
-
-```python
-# skills/web_search/skill.py
+# skills/my_skill/skill.py
 SKILL_META = {
-    "name": "web_search",
-    "description": "Searches the web and returns the top results.",
-    "trigger_patterns": [r"\bsearch\b", r"\blook up\b", r"\bfind\b"],
-    "version": "1.0.0",
+    "name": "my_skill",
+    "description": "Does something useful.",
+    "trigger_patterns": [r"\bmy_keyword\b"],
 }
 
-def execute(input):          # sync or async — both work
+def execute(input):
     from eval_framework.skills.registry import SkillOutput
-    query = input.query
-    # ... call your search API ...
-    return SkillOutput(result="Top result: ...", success=True)
+    return SkillOutput(result="...", success=True)
 ```
 
-3. That's it.  The registry picks it up automatically on the next `load()`.
+The registry auto-discovers it on the next run.
 
----
+### Adding a New Benchmark
 
-## Adding a New Benchmark
-
-Subclass `Benchmark` and implement `run()`:
-
-```python
-# benchmarks/my_benchmark.py
-from eval_framework.benchmarks.base import Benchmark, BenchmarkResult, TestResult
-
-class MyBenchmark(Benchmark):
-    name = "my_benchmark"
-    description = "Tests something specific."
-
-    async def run(self, model, skills=None, **kwargs) -> BenchmarkResult:
-        result, t0 = self._make_result(model.model_name, self.name, skills.names if skills else [])
-
-        response = await model.generate("Some prompt")
-        passed = "expected" in response.content.lower()
-        result.test_results.append(TestResult(
-            test_id="test_01",
-            passed=passed,
-            score=1.0 if passed else 0.0,
-            model_output=response.content,
-            expected="expected",
-            latency_ms=response.latency_ms,
-        ))
-        return self._close_result(result, t0)
-```
-
-Register it in `config.yaml` or pass it directly:
-
-```python
-runner = EvaluationRunner(config, extra_benchmarks=[MyBenchmark()])
-```
-
----
-
-## Config Reference
-
-| Key | Type | Default | Description |
-|---|---|---|---|
-| `models` | list | required | One entry per model/adapter |
-| `skills_dir` | str | `./skills` | Path to skill folder tree |
-| `skill_configs` | list | all skills | Named skill enable/disable sets |
-| `benchmarks` | list | required | Benchmark types to run |
-| `runs` | int | `1` | Repeat count (for variance estimation) |
-| `concurrency` | int | `4` | Max parallel model API calls |
-| `output_dir` | str | `./results` | Where to write JSON + CSV |
-
-### `skill_configs` semantics
-
-| `enabled` value | Behaviour |
-|---|---|
-| `[]` (empty list) | Load **all** skills from `skills_dir` |
-| `["calculator"]` | Load **only** the named skills |
-| `null` | **No** skill registry — pure model baseline |
-
----
-
-## Result Output
-
-### JSON (`results/<run_id>_results.json`)
-
-Full structured output including per-test-case scores, latencies, token counts,
-and metadata.
-
-```json
-{
-  "run_id": "20240501T120000Z",
-  "results": [
-    {
-      "benchmark_name": "skill_selection_accuracy",
-      "model_name": "gpt-4o-mini",
-      "skill_config": ["calculator"],
-      "score": 0.923,
-      "avg_latency_ms": 312.4,
-      "total_tokens": 1840,
-      ...
-    }
-  ],
-  "comparison_table": [...]
-}
-```
-
-### CSV (`results/<run_id>_summary.csv`)
-
-Flat table with one row per `(model, benchmark, skill_config)`:
-
-```
-model,benchmark,skill_config,score,pass_rate,avg_latency_ms,avg_tokens,skill_delta
-gpt-4o-mini,skill_selection_accuracy,all_skills,0.923,92.3%,312.4,1840,+0.154
-gpt-4o-mini,skill_selection_accuracy,no_skills,0.769,76.9%,289.1,1620,—
-```
-
-The `skill_delta` column is `all_skills_score − no_skills_score`, showing
-the performance lift from enabling skills.
-
----
-
-## Running Tests
-
-```bash
-cd eval_framework
-pytest tests/ -v
-```
-
-Tests use mock adapters — no real API calls, no GPU required.
+Subclass `Benchmark` and implement `run()`. See `benchmarks/skill_selection.py`
+for a complete example.
 
 ---
 
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                        EvaluationRunner                          │
-│  reads RunnerConfig → builds adapters, registries, benchmarks    │
-│  runs cross-product: model × skill_config × benchmark × n_runs  │
-│  collects BenchmarkResult list → comparison_table → JSON + CSV  │
-└──────────┬──────────────────┬───────────────────────────────────┘
-           │                  │
-    ┌──────▼──────┐    ┌──────▼──────────┐
-    │ ModelAdapter│    │  SkillRegistry   │
-    │   (ABC)     │    │  .load()         │
-    ├─────────────┤    │  .get(name)      │
-    │ OpenAI      │    │  .find_matching()│
-    │ HuggingFace │    └──────┬───────────┘
-    │ LlamaCpp    │           │ loads
-    └──────┬──────┘    ┌──────▼───────────┐
-           │           │  Skill           │
-    ┌──────▼──────┐    │  .matches(query) │
-    │  Benchmark  │    │  .execute(input) │
-    │  (ABC)      │    └──────────────────┘
-    ├─────────────┤
-    │ SkillSelect │  → BenchmarkResult → TestResult[]
-    │ EndToEnd    │
-    └─────────────┘
+┌──────────────────────────────────────────────────────────────────────┐
+│                         EvaluationRunner                             │
+│  reads config → builds adapters, registries, benchmarks              │
+│  runs cross-product: model × skill_config × benchmark × n_runs      │
+│  collects BenchmarkResult list → comparison table → JSON + CSV       │
+└─────────┬───────────────────┬────────────────────────────────────────┘
+          │                   │
+   ┌──────▼──────┐     ┌──────▼──────────┐
+   │ ModelAdapter │     │  SkillRegistry   │
+   │   (ABC)      │     │  auto-discovers  │
+   ├──────────────┤     │  skill folders   │
+   │ Ollama  ✦    │     └──────┬───────────┘
+   │ OpenAI       │            │
+   │ HuggingFace  │     ┌──────▼───────────────────────────┐
+   │ LlamaCpp     │     │  Skills: calculator, converter,   │
+   └──────┬───────┘     │  dictionary, datetime_calc        │
+          │             └──────────────────────────────────┘
+   ┌──────▼──────┐
+   │  Benchmark  │
+   ├─────────────┤
+   │ SkillSelect │ → "Which tool should I use?"
+   │ EndToEnd    │ → "Did I get the right answer?"
+   └─────────────┘
+                    ↓
+   ┌──────────────────────────────┐
+   │  analyze.py                   │
+   │  Charts, tables, insights     │
+   └──────────────────────────────┘
 ```
+
+---
+
+## Resource Links
+
+- **Ollama**: https://ollama.com — Local model runner
+- **Qwen**: https://qwenlm.github.io — Alibaba's open model family
+- **Gemma**: https://ai.google.dev/gemma — Google's open model family
+- **Nemotron**: https://developer.nvidia.com/nemotron — NVIDIA's efficient model family
+- **Tool-use in LLMs**: Schick et al., "Toolformer: Language Models Can Teach Themselves to Use Tools" (2023)
+- **Small LLM Survey**: Zhu et al., "A Survey on Small Language Models" (2024)
+- **lm-evaluation-harness**: https://github.com/EleutherAI/lm-evaluation-harness
 
 ---
 

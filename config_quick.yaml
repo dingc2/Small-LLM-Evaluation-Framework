@@ -1,0 +1,35 @@
+# ============================================================
+# Quick smoke-test — verify setup with smallest model, 1 run
+# ============================================================
+#
+# Usage:
+#   cd eval_framework
+#   python -m eval_framework.runner --config config_quick.yaml --verbose
+
+models:
+  - type: ollama
+    model: qwen3.5:2b
+    kwargs:
+      temperature: 0.0
+      num_predict: 256
+
+skills_dir: ./skills
+
+skill_configs:
+  - name: all_skills
+    enabled: []
+  - name: no_skills
+    enabled: null
+
+benchmarks:
+  - type: skill_selection_accuracy
+    kwargs:
+      temperature: 0.0
+  - type: end_to_end_task_completion
+    kwargs:
+      max_turns: 2
+      temperature: 0.0
+
+runs: 1
+concurrency: 1
+output_dir: ./results
