@@ -16,7 +16,7 @@
 #
 # Run:
 #   cd eval_framework
-#   python -m eval_framework.runner --config config_ollama.yaml --verbose
+#   python runner.py --config config_ollama.yaml --verbose
 
 # ----------------------------------------------------------
 # 1. Models — ordered smallest to largest
@@ -102,6 +102,6 @@ benchmarks:
 # ----------------------------------------------------------
 # 5. Runner settings
 # ----------------------------------------------------------
-runs: 3              # 3 runs for variance measurement
+runs: 1              # 1 run = ~25–45 min; increase to 3 for variance data
 concurrency: 1       # Sequential — Ollama runs one model at a time
 output_dir: ./results

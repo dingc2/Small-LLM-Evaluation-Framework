@@ -233,11 +233,24 @@ class SkillSelectionBenchmark(Benchmark):
                 expected=tc.expected,
             )
 
-        raw_output = response.content.strip().lower()
-        # Normalise: take first non-empty word/line
-        first_word = raw_output.split()[0] if raw_output.split() else ""
-        # Strip punctuation
         import re
+        raw_output = response.content.strip()
+
+        # Strip thinking blocks emitted by reasoning models (e.g. Qwen, DeepSeek)
+        # e.g. <think>...</think> or <thinking>...</thinking>
+        cleaned = re.sub(r"<think(?:ing)?>\s*.*?\s*</think(?:ing)?>", "", raw_output,
+                         flags=re.DOTALL | re.IGNORECASE).strip()
+        if not cleaned:
+            cleaned = raw_output  # fallback if whole output was a think block
+
+        cleaned_lower = cleaned.lower()
+
+        # Take the last non-empty line — models often put the answer at the end
+        lines = [l.strip() for l in cleaned_lower.splitlines() if l.strip()]
+        candidate = lines[-1] if lines else ""
+
+        # Extract the first word and strip punctuation
+        first_word = candidate.split()[0] if candidate.split() else ""
         normalised = re.sub(r"[^\w]", "", first_word)
 
         expected = str(tc.expected).strip().lower()

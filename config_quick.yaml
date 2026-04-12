@@ -4,7 +4,7 @@
 #
 # Usage:
 #   cd eval_framework
-#   python -m eval_framework.runner --config config_quick.yaml --verbose
+#   python runner.py --config config_quick.yaml --verbose
 
 models:
   - type: ollama

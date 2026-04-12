@@ -82,7 +82,6 @@ eval_framework/
 ```bash
 cd eval_framework
 pip install -r requirements.txt
-pip install httpx matplotlib numpy   # For Ollama adapter + visualisations
 ```
 
 ### Step 2: Install Ollama & Pull Models
@@ -108,23 +107,28 @@ ollama pull gpt-oss:20b         # ~13 GB
 ### Step 3: Smoke Test
 
 ```bash
-# Quick test with a single model to verify everything works
-python -m eval_framework.runner --config config_quick.yaml --verbose
+# All commands run from inside eval_framework/
+cd eval_framework
+
+# Quick test with a single model (~2–3 min)
+python runner.py --config config_quick.yaml --verbose
 ```
 
 ### Step 4: Full Evaluation
 
 ```bash
-# Run the full 6-model × 2-condition sweep (takes ~30–60 minutes)
-python -m eval_framework.runner --config config_ollama.yaml --verbose
+# Full 7-model × 2-condition sweep (~45–90 min)
+python runner.py --config config_ollama.yaml --verbose
 ```
 
 ### Step 5: Analyse Results
 
 ```bash
-# Generate summary + charts
-python -m eval_framework.analyze results/<run_id>_results.json
+# Generate summary table + 5 charts
+python analyze.py results/<run_id>_results.json
 ```
+
+The `<run_id>` is printed when the run finishes (e.g. `20260411T120000Z`). Results and charts land in `results/`.
 
 ---
 
@@ -179,7 +183,7 @@ performance beyond its raw reasoning capability.
 After running the evaluation, use the analysis module:
 
 ```bash
-python -m eval_framework.analyze results/<run_id>_results.json
+python analyze.py results/<run_id>_results.json
 ```
 
 This generates:

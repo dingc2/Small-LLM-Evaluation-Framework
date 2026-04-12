@@ -39,6 +39,7 @@ answer the user's question. Use them when appropriate.
 
 After using a tool (if needed), provide your final answer as a plain number
 or short string — nothing else. Do not include units or extra explanation.
+Do not explain your reasoning. Output ONLY the answer.
 """
 
 # Built-in test cases — organised by skill
@@ -320,13 +321,25 @@ class EndToEndBenchmark(Benchmark):
             # Feed tool output back as the new prompt for the next turn
             prompt = "\n".join(tool_outputs) + "\n\nNow provide your final answer."
 
+        # Strip thinking blocks before parsing final content
+        if final_content:
+            import re as _re
+            final_content_clean = _re.sub(
+                r"<think(?:ing)?>\s*.*?\s*</think(?:ing)?>", "",
+                final_content, flags=_re.DOTALL | _re.IGNORECASE
+            ).strip()
+            if not final_content_clean:
+                final_content_clean = final_content
+        else:
+            final_content_clean = final_content or ""
+
         # If no direct tool result, try to parse a number from the model's text
-        if actual_value is None and final_content:
-            num = _extract_number(final_content)
+        if actual_value is None and final_content_clean:
+            num = _extract_number(final_content_clean)
             if num is not None:
                 actual_value = num
             else:
-                actual_value = final_content.strip()
+                actual_value = final_content_clean.strip()
 
         tolerance = tc.metadata.get("tolerance", self._float_tolerance)
         score = _default_scorer(actual_value, tc.expected, tolerance)

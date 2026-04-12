@@ -1,4 +1,11 @@
 #!/usr/bin/env python3
+# ---------------------------------------------------------------------------
+# Path shim — makes `python analyze.py` work from inside eval_framework/
+# ---------------------------------------------------------------------------
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
+# ---------------------------------------------------------------------------
+
 """
 Result analysis and visualisation for the Small-LLM Skill-Uplift study.
 
@@ -8,12 +15,15 @@ Reads the JSON output from the evaluation runner and produces:
   3. Heatmap: model × benchmark scores  (PNG)
   4. Latency comparison chart            (PNG)
   5. Model-size scatter plot             (PNG)
+  6. Per-skill breakdown bar chart       (PNG)
 
-Usage
+Usage (run from inside eval_framework/)
 -----
-    python -m eval_framework.analyze results/<run_id>_results.json
+    python analyze.py results/<run_id>_results.json
+    python analyze.py results/<run_id>_results.json --output results/charts
+    python analyze.py results/<run_id>_results.json --no-charts   # text only
 
-Requires: matplotlib  (pip install matplotlib)
+Requires: matplotlib, numpy  (pip install matplotlib numpy)
 """
 
 from __future__ import annotations

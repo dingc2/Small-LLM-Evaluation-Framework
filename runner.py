@@ -3,47 +3,59 @@ Evaluation runner — orchestrates the full (model × skill_config × benchmark)
 
 Usage
 -----
-    # Programmatic
-    runner = EvaluationRunner.from_yaml("config.yaml")
-    summary = await runner.run_all()
-    summary.save_json("results/run_001.json")
-    summary.print_table()
+Run from inside the eval_framework/ directory:
 
-    # CLI
-    python -m eval_framework.runner --config config.yaml --output results/
+    # Quick smoke test
+    python runner.py --config config_quick.yaml --verbose
+
+    # Full evaluation sweep
+    python runner.py --config config_ollama.yaml --verbose
+
+    # Override output directory
+    python runner.py --config config_ollama.yaml --output results/my_run --verbose
+
+    # Programmatic
+    runner = EvaluationRunner.from_yaml("config_ollama.yaml")
+    summary = await runner.run_all()
+    summary.print_table()
+    summary.save_json("results/run.json")
 
 Config shape (YAML / dict)
 --------------------------
     models:
-      - type: openai
+      - type: ollama              # recommended for local inference
+        model: qwen3.5:4b
+        kwargs:
+          temperature: 0.0
+          num_predict: 512
+
+      - type: openai              # OpenAI or any compatible endpoint
         model: gpt-4o-mini
-        api_key: sk-...          # optional; falls back to OPENAI_API_KEY
-        base_url: null           # optional OpenAI-compatible endpoint
-        kwargs: {}               # extra generation params
+        api_key: sk-...           # optional; falls back to OPENAI_API_KEY
 
-      - type: llamacpp
-        model_path: /models/llama.gguf
-        n_gpu_layers: 32
-
-    skills_dir: ./skills          # path to skill folder tree
+    skills_dir: ./skills          # relative to eval_framework/
     skill_configs:
       - name: all_skills          # label used in results
         enabled: []               # empty = all skills; list names to restrict
       - name: no_skills
-        enabled: null             # null = skip skill registry entirely
+        enabled: null             # null = skip registry (baseline)
 
     benchmarks:
       - type: skill_selection_accuracy
       - type: end_to_end_task_completion
         kwargs:
-          max_turns: 2
+          max_turns: 3
 
-    runs: 1                       # repeat each combination N times (for variance)
-    output_dir: ./results
-    concurrency: 4                # max parallel model calls
+    runs: 3                       # repeat each combination N times (for variance)
+    output_dir: ./results         # relative to eval_framework/
+    concurrency: 1                # 1 = sequential (best for Ollama)
 """
 
 from __future__ import annotations
+
+# Path shim — makes `python runner.py` work from inside eval_framework/
+import sys as _sys, os as _os
+_sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
 import asyncio
 import csv
