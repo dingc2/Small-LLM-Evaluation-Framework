@@ -6,4 +6,4 @@ __pycache__/
 .env
 
 # Results folder
-results/
+results/*.json
