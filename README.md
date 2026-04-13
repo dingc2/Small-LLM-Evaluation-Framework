@@ -250,22 +250,57 @@ for the smallest models.
 
 ## Results & Analysis
 
-After running the evaluation, use the analysis module:
+Latest aggregated run: `results/aggregated_results.json` (generated 2026-04-12/13 UTC).
+
+To regenerate summaries/charts from this file:
 
 ```bash
-python analyze.py results/<run_id>_results.json
+python analyze.py results/aggregated_results.json
 ```
 
-This generates:
+### End-to-End Task Completion (with vs without skills)
 
-| Output | Description |
-|---|---|
-| Terminal summary table | Score, pass rate, latency, skill delta per model |
-| `skill_uplift.png` | Bar chart of skill uplift per model |
-| `score_heatmap.png` | Heatmap of scores across all conditions |
-| `latency_comparison.png` | Inference latency by model |
-| `size_vs_score.png` | Model parameters vs. performance scatter |
-| `per_skill_breakdown.png` | Per-skill pass rates |
+| Model | all_skills score | no_skills score | Skill uplift |
+|---|---|---|---|
+| qwen3.5:9b | 0.950 | 0.167 | +0.783 |
+| qwen3.5:4b | 0.950 | 0.400 | +0.550 |
+| qwen3.5:2b | 0.800 | 0.300 | +0.500 |
+| gemma4:e4b | 1.000 | 0.550 | +0.450 |
+| ministral-3:3b | 0.750 | 0.300 | +0.450 |
+| ministral-3:8b | 0.900 | 0.550 | +0.350 |
+| ministral-3:14b | 0.850 | 0.600 | +0.250 |
+| nemotron-3-nano:4b | 0.900 | 0.700 | +0.200 |
+| gpt-oss:20b | 0.950 | 0.800 | +0.150 |
+| gemma4:e2b | 0.850 | 0.850 | +0.000 |
+
+### Key findings from aggregated results
+
+1. Tool access improves end-to-end accuracy for 9/10 models, with strongest gains in smaller Qwen variants.
+2. Skill-selection accuracy is near-ceiling with tools enabled (8/10 models at 100%; gemma4:e2b at 96%, ministral-3:3b at 92%).
+3. Date/Time cases are the hardest skill category (overall pass rate 0.700 with tools), while calculator/unit conversion/dictionary are high (0.933/0.960/0.967).
+4. Latency rises for many models with tool augmentation, but impact is model-dependent (Qwen/Nemotron remain the slowest overall).
+
+### Charts (from `results/charts/`)
+
+#### Skill uplift by model
+
+![Skill uplift by model](results/charts/skill_uplift.png)
+
+#### Score heatmap (model × benchmark × config)
+
+![Score heatmap](results/charts/score_heatmap.png)
+
+#### Latency comparison
+
+![Latency comparison](results/charts/latency_comparison.png)
+
+#### Model size vs score
+
+![Model size vs score](results/charts/size_vs_score.png)
+
+#### Per-skill breakdown
+
+![Per-skill breakdown](results/charts/per_skill_breakdown.png)
 
 ---
 
@@ -324,13 +359,13 @@ for a complete example.
 │  collects BenchmarkResult list → comparison table → JSON + CSV       │
 └─────────┬───────────────────┬────────────────────────────────────────┘
           │                   │
-   ┌──────▼───────┐     ┌──────▼───────────┐
+   ┌──────▼───────┐     ┌─────▼────────────┐
    │ ModelAdapter │     │  SkillRegistry   │
    │   (ABC)      │     │  auto-discovers  │
    ├──────────────┤     │  skill folders   │
-   │ Ollama  ✦    │     └──────┬───────────┘
-   │ OpenAI       │            │
-   │ HuggingFace  │     ┌──────▼───────────────────────────┐
+   │ Ollama  ✦    │     └─────┬────────────┘
+   │ OpenAI       │           │
+   │ HuggingFace  │     ┌─────▼────────────────────────────┐
    │ LlamaCpp     │     │  Skills: calculator, converter,  │
    └──────┬───────┘     │  dictionary, datetime_calc       │
           │             └──────────────────────────────────┘
@@ -339,9 +374,9 @@ for a complete example.
    ├─────────────┤
    │ SkillSelect │ → "Which tool should I use?"
    │ EndToEnd    │ → "Did I get the right answer?"
-   └─────────────┘
-                    ↓
-   ┌──────────────────────────────┐
+   └──────┬──────┘
+          │
+   ┌──────▼───────────────────────┐
    │  analyze.py                  │
    │  Charts, tables, insights    │
    └──────────────────────────────┘
