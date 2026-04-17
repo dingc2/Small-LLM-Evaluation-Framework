@@ -97,6 +97,54 @@ _BUILTIN_CASES: list[dict[str, Any]] = [
     {"id": "e2e_date_04", "prompt": "How many days between 2024-03-17 and 2024-10-09?",
      "expected": 206, "skill": "datetime_calc"},
 
+    # --- Clinical lab unit harmonization (unit_converter, extended) ---
+    # Ported from SkillsBench lab-unit-harmonization; factors derived from
+    # each analyte's molecular weight.  Expected values verified by
+    # first-principles math before inclusion.
+    {"id": "e2e_lab_01",
+     "prompt": "Convert Serum Creatinine 1.5 mg/dL to µmol/L",
+     "expected": 132.6, "skill": "unit_converter", "tolerance": 1.0},
+    {"id": "e2e_lab_02",
+     "prompt": "Convert Hemoglobin 14.5 g/dL to g/L",
+     "expected": 145.0, "skill": "unit_converter", "tolerance": 0.5},
+    {"id": "e2e_lab_03",
+     "prompt": "Convert Glucose 126 mg/dL to mmol/L",
+     "expected": 7.0, "skill": "unit_converter", "tolerance": 0.1},
+    {"id": "e2e_lab_04",
+     "prompt": "Convert Total Cholesterol 210 mg/dL to mmol/L",
+     "expected": 5.43, "skill": "unit_converter", "tolerance": 0.1},
+    {"id": "e2e_lab_05",
+     "prompt": "Convert Serum Calcium 9.5 mg/dL to mmol/L",
+     "expected": 2.37, "skill": "unit_converter", "tolerance": 0.1},
+    {"id": "e2e_lab_06",
+     "prompt": "Convert BUN 28 mg/dL to mmol/L",
+     "expected": 10.0, "skill": "unit_converter", "tolerance": 0.5},
+    {"id": "e2e_lab_07",
+     "prompt": "Convert Vitamin D 30 ng/mL to nmol/L",
+     "expected": 74.88, "skill": "unit_converter", "tolerance": 1.0},
+    {"id": "e2e_lab_08",
+     "prompt": "Convert Triglycerides 180 mg/dL to mmol/L",
+     "expected": 2.03, "skill": "unit_converter", "tolerance": 0.05},
+
+    # --- Powerlifting Dots coefficient (new skill) ---
+    # Expected values recomputed from the IPF Dots (2019) polynomial;
+    # see skills/powerlifting/skill.py for coefficients.
+    {"id": "e2e_dots_01",
+     "prompt": "Calculate the Dots coefficient for a male lifter: bodyweight 83.2kg, total 620kg",
+     "expected": 417.99, "skill": "powerlifting", "tolerance": 0.5},
+    {"id": "e2e_dots_02",
+     "prompt": "Calculate the Dots coefficient for a female lifter: bodyweight 57.3kg, total 390kg",
+     "expected": 445.29, "skill": "powerlifting", "tolerance": 0.5},
+    {"id": "e2e_dots_03",
+     "prompt": "Calculate Dots for male, bodyweight 74kg, total 580kg",
+     "expected": 419.72, "skill": "powerlifting", "tolerance": 0.5},
+    {"id": "e2e_dots_04",
+     "prompt": "Calculate Dots for female, bodyweight 63kg, total 410kg",
+     "expected": 440.96, "skill": "powerlifting", "tolerance": 0.5},
+    {"id": "e2e_dots_05",
+     "prompt": "Calculate Dots for male, bodyweight 100kg, total 700kg",
+     "expected": 430.86, "skill": "powerlifting", "tolerance": 1.0},
+
     # --- No-tool baselines ---
     {"id": "e2e_no_tool_01", "prompt": "Say exactly: hello",
      "expected": "hello", "skill": None},

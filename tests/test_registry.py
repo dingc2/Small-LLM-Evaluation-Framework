@@ -304,6 +304,75 @@ def test_unit_converter_structured_params():
 
 
 # ---------------------------------------------------------------------------
+# Tests: Clinical lab unit conversions (unit_converter extension)
+# ---------------------------------------------------------------------------
+
+
+def test_clinical_creatinine_mg_dl_to_umol_l():
+    out = _run_skill("unit_converter", "Convert Serum Creatinine 1.5 mg/dL to µmol/L")
+    assert out.success
+    assert math.isclose(out.result, 132.6, abs_tol=0.5)
+    assert out.metadata.get("analyte") == "creatinine"
+
+
+def test_clinical_hemoglobin_g_dl_to_g_l():
+    out = _run_skill("unit_converter", "Convert Hemoglobin 14.5 g/dL to g/L")
+    assert out.success
+    assert math.isclose(out.result, 145.0, abs_tol=0.1)
+
+
+def test_clinical_glucose_mg_dl_to_mmol_l():
+    out = _run_skill("unit_converter", "Convert Glucose 126 mg/dL to mmol/L")
+    assert out.success
+    assert math.isclose(out.result, 7.0, abs_tol=0.1)
+
+
+def test_clinical_cholesterol_mg_dl_to_mmol_l():
+    out = _run_skill("unit_converter", "Convert Total Cholesterol 210 mg/dL to mmol/L")
+    assert out.success
+    assert math.isclose(out.result, 5.43, abs_tol=0.05)
+
+
+def test_clinical_calcium_mg_dl_to_mmol_l():
+    out = _run_skill("unit_converter", "Convert Serum Calcium 9.5 mg/dL to mmol/L")
+    assert out.success
+    assert math.isclose(out.result, 2.37, abs_tol=0.05)
+
+
+def test_clinical_bun_mg_dl_to_mmol_l():
+    out = _run_skill("unit_converter", "Convert BUN 28 mg/dL to mmol/L")
+    assert out.success
+    assert math.isclose(out.result, 10.0, abs_tol=0.1)
+
+
+def test_clinical_vitamin_d_ng_ml_to_nmol_l():
+    out = _run_skill("unit_converter", "Convert Vitamin D 30 ng/mL to nmol/L")
+    assert out.success
+    assert math.isclose(out.result, 74.88, abs_tol=0.5)
+
+
+def test_clinical_triglycerides_mg_dl_to_mmol_l():
+    out = _run_skill("unit_converter", "Convert Triglycerides 180 mg/dL to mmol/L")
+    assert out.success
+    assert math.isclose(out.result, 2.03, abs_tol=0.05)
+
+
+def test_clinical_reverse_glucose_mmol_l_to_mg_dl():
+    """Reverse direction: mmol/L → mg/dL should round-trip."""
+    out = _run_skill("unit_converter", "Convert Glucose 7.0 mmol/L to mg/dL")
+    assert out.success
+    assert math.isclose(out.result, 126.1, abs_tol=1.0)
+
+
+def test_clinical_analyte_after_number():
+    """Analyte keyword can appear after the value (routing stays clinical)."""
+    out = _run_skill("unit_converter", "What's 126 mg/dL glucose in mmol/L?")
+    assert out.success
+    assert out.metadata.get("analyte") == "glucose"
+    assert math.isclose(out.result, 7.0, abs_tol=0.1)
+
+
+# ---------------------------------------------------------------------------
 # Tests: Dictionary skill execute()
 # ---------------------------------------------------------------------------
 
@@ -357,3 +426,111 @@ def test_datetime_bad_query_fails():
     assert not out.success
     assert out.error is not None
     assert "could not parse" in out.error.lower()
+
+
+# ---------------------------------------------------------------------------
+# Tests: Powerlifting skill (IPF Dots)
+# ---------------------------------------------------------------------------
+
+
+def test_registry_loads_powerlifting():
+    reg = _make_registry()
+    assert "powerlifting" in reg
+
+
+def test_dots_male_83_620():
+    out = _run_skill(
+        "powerlifting",
+        "Calculate Dots for male, bodyweight 83.2kg, total 620kg",
+    )
+    assert out.success
+    assert math.isclose(out.result, 417.99, abs_tol=0.1)
+    assert out.metadata.get("sex") == "M"
+
+
+def test_dots_female_57_390():
+    out = _run_skill(
+        "powerlifting",
+        "Calculate Dots for female, bodyweight 57.3kg, total 390kg",
+    )
+    assert out.success
+    assert math.isclose(out.result, 445.29, abs_tol=0.1)
+    assert out.metadata.get("sex") == "F"
+
+
+def test_dots_male_74_580():
+    out = _run_skill(
+        "powerlifting",
+        "Calculate Dots for male, bodyweight 74kg, total 580kg",
+    )
+    assert out.success
+    assert math.isclose(out.result, 419.72, abs_tol=0.1)
+
+
+def test_dots_female_63_410():
+    out = _run_skill(
+        "powerlifting",
+        "Calculate Dots for female, bodyweight 63kg, total 410kg",
+    )
+    assert out.success
+    assert math.isclose(out.result, 440.96, abs_tol=0.1)
+
+
+def test_dots_male_100_700():
+    out = _run_skill(
+        "powerlifting",
+        "Calculate Dots for male, bodyweight 100kg, total 700kg",
+    )
+    assert out.success
+    assert math.isclose(out.result, 430.86, abs_tol=0.1)
+
+
+def test_dots_structured_params():
+    out = _run_skill(
+        "powerlifting",
+        "",
+        parameters={"sex": "M", "bodyweight_kg": 83.2, "total_kg": 620},
+    )
+    assert out.success
+    assert math.isclose(out.result, 417.99, abs_tol=0.1)
+
+
+def test_dots_natural_sex_ordering():
+    """Query with numbers before keywords — smaller=bw, larger=total heuristic."""
+    out = _run_skill(
+        "powerlifting",
+        "What is the Dots coefficient for a 83.2kg male with 620kg total?",
+    )
+    assert out.success
+    assert math.isclose(out.result, 417.99, abs_tol=0.1)
+
+
+def test_dots_negative_bodyweight_errors():
+    out = _run_skill(
+        "powerlifting",
+        "",
+        parameters={"sex": "M", "bodyweight_kg": -10, "total_kg": 500},
+    )
+    assert not out.success
+    assert out.error is not None
+    assert "bodyweight" in out.error.lower()
+
+
+def test_dots_missing_sex_errors():
+    out = _run_skill(
+        "powerlifting",
+        "Dots for bodyweight 80kg total 600kg",
+    )
+    assert not out.success
+    assert out.error is not None
+    assert "sex" in out.error.lower()
+
+
+def test_dots_unknown_sex_errors():
+    out = _run_skill(
+        "powerlifting",
+        "",
+        parameters={"sex": "X", "bodyweight_kg": 80, "total_kg": 600},
+    )
+    assert not out.success
+    assert "sex" in out.error.lower()
