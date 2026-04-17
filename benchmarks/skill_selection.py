@@ -49,6 +49,9 @@ Answer: dictionary
 User: "How many days between 2023-06-01 and 2023-09-15?"
 Answer: datetime_calc
 
+User: "Dots score for male 80kg 600kg total?"
+Answer: powerlifting
+
 User: "Write me a poem about the ocean."
 Answer: none
 
@@ -80,13 +83,17 @@ _CALCULATOR_CASES: list[dict[str, Any]] = [
     {"id": "calc_sel_05", "prompt": "How much is (1247 + 3891) divided by 17.3?", "expected": "calculator"},
 ]
 
-# Unit converter cases — use non-round values and natural phrasing
+# Unit converter cases — use non-round values and natural phrasing.
+# Last 3 cases cover the clinical-lab extension (Step 1 of v2 plan).
 _UNIT_CONVERTER_CASES: list[dict[str, Any]] = [
     {"id": "conv_sel_01", "prompt": "My car's odometer reads 38,471 km — what's that in miles?", "expected": "unit_converter"},
     {"id": "conv_sel_02", "prompt": "A recipe calls for 237 grams of flour, how many ounces is that?", "expected": "unit_converter"},
     {"id": "conv_sel_03", "prompt": "It's 41 degrees Fahrenheit outside — what is that in Celsius?", "expected": "unit_converter"},
     {"id": "conv_sel_04", "prompt": "I have a 3.7 liter engine — how many gallons is that?", "expected": "unit_converter"},
     {"id": "conv_sel_05", "prompt": "The shelf is 91.4 centimeters wide, I need that in inches", "expected": "unit_converter"},
+    {"id": "conv_sel_06", "prompt": "Convert 1.5 mg/dL of serum creatinine to µmol/L", "expected": "unit_converter"},
+    {"id": "conv_sel_07", "prompt": "What's 126 mg/dL glucose in mmol/L?", "expected": "unit_converter"},
+    {"id": "conv_sel_08", "prompt": "Hemoglobin 14.5 g/dL — what's that in g/L?", "expected": "unit_converter"},
 ]
 
 # Dictionary cases — avoid blatant keywords like "define" or "dictionary"
@@ -105,6 +112,15 @@ _DATETIME_CASES: list[dict[str, Any]] = [
     {"id": "date_sel_03", "prompt": "If I start a 90-day challenge on 2025-03-11, when does it end?", "expected": "datetime_calc"},
     {"id": "date_sel_04", "prompt": "How long between March 17, 2024 and October 9, 2024 in days?", "expected": "datetime_calc"},
     {"id": "date_sel_05", "prompt": "What day of the week will September 29, 2025 fall on?", "expected": "datetime_calc"},
+]
+
+# Powerlifting Dots cases — new skill routing coverage
+_POWERLIFTING_CASES: list[dict[str, Any]] = [
+    {"id": "pow_sel_01", "prompt": "What is the Dots coefficient for a 83.2kg male with 620kg total?", "expected": "powerlifting"},
+    {"id": "pow_sel_02", "prompt": "Calculate the IPF points for a female lifter at 57kg bodyweight with a 390kg total", "expected": "powerlifting"},
+    {"id": "pow_sel_03", "prompt": "Score this powerlifting performance: male, 74kg, 580kg total", "expected": "powerlifting"},
+    {"id": "pow_sel_04", "prompt": "How many Dots is 410kg at 63kg bodyweight (F)?", "expected": "powerlifting"},
+    {"id": "pow_sel_05", "prompt": "Give me the Dots rating for my last meet: 700kg total at 100kg bodyweight male", "expected": "powerlifting"},
 ]
 
 
@@ -207,6 +223,8 @@ class SkillSelectionBenchmark(Benchmark):
             cases.extend(_DICTIONARY_CASES)
         if skills and "datetime_calc" in skills:
             cases.extend(_DATETIME_CASES)
+        if skills and "powerlifting" in skills:
+            cases.extend(_POWERLIFTING_CASES)
 
         if self._include_no_skill:
             cases.extend(_NO_SKILL_CASES)
