@@ -538,7 +538,7 @@ def test_skill_selection_recovers_from_truncated_think_block():
 
 def test_e2e_all_skills_and_no_skills_same_case_count():
     """
-    Both skill conditions must run all 20 built-in cases.
+    Both skill conditions must run all 33 built-in cases (20 original + 13 new).
 
     no_skills (skills=None) passes the filter because
     ``skills is not None`` is False, so no case is ever skipped.
@@ -553,11 +553,11 @@ def test_e2e_all_skills_and_no_skills_same_case_count():
     cases_with_skills = bench._build_test_cases(registry)
     cases_without_skills = bench._build_test_cases(None)
 
-    assert len(cases_with_skills) == 20, (
-        f"all_skills should run 20 cases, got {len(cases_with_skills)}"
+    assert len(cases_with_skills) == 33, (
+        f"all_skills should run 33 cases, got {len(cases_with_skills)}"
     )
-    assert len(cases_without_skills) == 20, (
-        f"no_skills should also run 20 cases, got {len(cases_without_skills)} "
+    assert len(cases_without_skills) == 33, (
+        f"no_skills should also run 33 cases, got {len(cases_without_skills)} "
         "(regression: check the filter in _build_test_cases)"
     )
     # The case IDs must match exactly — same population, same order

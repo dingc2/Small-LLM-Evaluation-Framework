@@ -17,7 +17,7 @@ pytest tests/ -v
 # Quick smoke test (3 Ministral models, ~10-20 min, requires Ollama running)
 python runner.py --config config_quick.yaml --verbose
 
-# Full 10-model sweep (~150-200 min with runs=3)
+# Full 10-model sweep (~3 hours with runs=3 on 24GB M-series)
 python runner.py --config config_ollama.yaml --verbose
 
 # Merge individual model runs into one aggregated file
@@ -37,7 +37,7 @@ python charts_gen.py
 | qwen3.5:2b | 2B | Qwen | Thinking model — emits `<think>` blocks |
 | qwen3.5:4b | 4B | Qwen | Thinking model |
 | qwen3.5:9b | 9B | Qwen | Thinking model |
-| gemma4:e2b | 2B | Gemma | Struggles with tool-call JSON formatting |
+| gemma4:e2b | 2B | Gemma | Smallest uplift (+0.152) — historical JSON-formatting struggle largely mitigated by the skill-selection prompt |
 | gemma4:e4b | 4B | Gemma | |
 | nemotron-3-nano:4b | 4B | Nemotron | NVIDIA edge-optimized |
 | gpt-oss:20b | 20B | GPT-OSS | Largest model, serves as upper bound |
@@ -52,9 +52,9 @@ Cross-product sweep: **model x skill_config x benchmark x n_runs**
 ```
 EvaluationRunner (runner.py)
   ├── Adapters: OllamaAdapter (primary), OpenAI, HuggingFace, LlamaCpp
-  ├── Skills: calculator, unit_converter, dictionary, datetime_calc
-  ├── Benchmarks: skill_selection (25 cases), end_to_end (20 cases)
-  ├── Skill configs: all_skills (4 tools) vs no_skills (baseline)
+  ├── Skills: calculator, unit_converter (+ clinical lab units), dictionary, datetime_calc, powerlifting (IPF Dots)
+  ├── Benchmarks: skill_selection (33 cases), end_to_end (33 cases)
+  ├── Skill configs: all_skills (5 tools) vs no_skills (baseline)
   └── Output: JSON + CSV in results/, comparison table with n_cases column
 ```
 
@@ -94,20 +94,23 @@ Three pluggable ABCs in `base.py` files: `ModelAdapter`, `Benchmark`, `SkillRegi
 - `config_ollama.yaml` — Full sweep config (10 models, runs=3)
 - `config_quick.yaml` — Smoke test config (3 Ministral models, runs=1)
 - `model_cards.md` — Model cards, data card, ethical considerations
-- `README.md` — Full documentation including critical analysis section
+- `README.md` — Full documentation including critical analysis section and SkillsBench provenance notes
 - `benchmarks/end_to_end.py` — Multi-turn tool-call benchmark with thinking-tag stripping
 - `benchmarks/skill_selection.py` — Skill routing accuracy benchmark
 - `adapters/ollama_adapter.py` — Native Ollama HTTP adapter
+- `skills/powerlifting/skill.py` — IPF Dots (2019) coefficient (port from benchflow-ai/skillsbench)
+- `benchmarks/utils.py` — Centralized think-tag stripping utilities
 
-## Known Anomalies in Results
+## Known Anomalies in Results (as of run 20260417T033055Z)
 
-- **Gemma4:e2b negative uplift**: Scores lower with tools because it can't format tool-call JSON reliably. This is actually an interesting finding about formatting as a distinct capability.
-- **Qwen3.5 diminishing returns**: Skill uplift decreases as model size increases (2B: +55%, 9B: +25%) because larger models already perform well without tools.
+- **All 10 models now show positive uplift.** The earlier Gemma4:e2b *negative* uplift (seen in the `20260412T215302Z` run) is gone. With the 33-case benchmark, gemma4:e2b is +0.152 — still the smallest uplift in the sweep, but positive. The "formatting as a distinct capability" story survives as "smallest uplift" rather than "negative uplift."
+- **Qwen3.5 does NOT show clean diminishing returns anymore.** Uplift by size: 2B +0.576, 4B +0.808 (largest), 9B +0.758. The 4B is the peak, not the 2B. The more honest framing is "small-to-mid Qwen models gain the most from tools; the 20B upper bound leaves less headroom (gpt-oss:20b: +0.121)."
+- **Smallest uplift is actually nemotron-3-nano:4b (+0.141)** and gpt-oss:20b (+0.121) — not gemma4:e2b. Nemotron's baseline is surprisingly strong for a 4B model.
+- **Skill selection accuracy is near-perfect** across the board: 9/10 models at ≥0.94, most at 1.00. Routing is not the bottleneck; tool-call formatting is.
 
 ## What Still Needs Doing
 
-- **Re-run full sweep** with `config_ollama.yaml` — previous results were from before all bug fixes. Use `merge_results.py` to aggregate runs across sessions.
-- After re-run: update hardcoded values in `charts_gen.py` with new results and regenerate charts.
+- **Full sweep complete** (2026-04-17, run `20260417T033055Z`, ~3 hours wall-clock) — charts regenerated via `analyze.py`.
 - Consider creating the final **presentation slides** (.pptx) for the class — rubric allocates 10 pts.
 
 ## Recent Improvements

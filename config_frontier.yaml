@@ -1,0 +1,87 @@
+# ============================================================
+# Frontier Baseline Sweep — NO TOOLS (paid API models)
+# ============================================================
+#
+# Purpose: Establish a no-skills baseline for frontier/cloud
+# models so their raw reasoning scores can be compared against
+# the small-local-with-tools results from config_ollama.yaml.
+#
+# Paired with: config_ollama.yaml (local 10-model sweep)
+#
+# Research question: Can small LLMs (<20B) with skill/tool
+# augmentation match or exceed larger frontier LLMs without tools?
+#
+# Run:
+#   cd eval_framework
+#   ANTHROPIC_API_KEY=sk-ant-... OPENAI_API_KEY=sk-... \
+#     python runner.py --config config_frontier.yaml --verbose
+#
+# Adapters:
+#   - type: openai → OpenAIAdapter (reads OPENAI_API_KEY env var)
+#
+# Budget note: scoped to OpenAI-only under a ~$5 credit cap.  Anthropic
+# Haiku dropped because no ANTHROPIC_API_KEY is available in this env.
+# ============================================================
+
+# ----------------------------------------------------------
+# 1. Models — frontier small models (API-hosted)
+# ----------------------------------------------------------
+models:
+  # OpenAI — gpt-4.1-mini (predictable pricing tier)
+  - type: openai
+    model: gpt-4.1-mini
+    # api_key omitted → OpenAIAdapter falls back to OPENAI_API_KEY env var
+    kwargs:
+      temperature: 0.0
+      max_tokens: 2048
+
+  # OpenAI — gpt-4.1-nano (cheapest contrast)
+  - type: openai
+    model: gpt-4.1-nano
+    # api_key omitted → OpenAIAdapter falls back to OPENAI_API_KEY env var
+    kwargs:
+      temperature: 0.0
+      max_tokens: 2048
+
+  # OpenAI — gpt-5.4-mini (newest frontier-mini tier, 2026-03-17 snapshot)
+  - type: openai
+    model: gpt-5.4-mini-2026-03-17
+    # api_key omitted → OpenAIAdapter falls back to OPENAI_API_KEY env var
+    kwargs:
+      temperature: 0.0
+      max_tokens: 2048
+
+# ----------------------------------------------------------
+# 2. Skill directory (required by schema; unused in no_skills)
+# ----------------------------------------------------------
+skills_dir: ./skills
+
+# ----------------------------------------------------------
+# 3. Skill configurations — NO TOOLS ONLY (frontier baseline)
+# ----------------------------------------------------------
+skill_configs:
+  # Baseline only — no skills loaded at all (raw model reasoning)
+  - name: no_skills
+    enabled: null
+
+# ----------------------------------------------------------
+# 4. Benchmarks — both, same as full sweep
+# ----------------------------------------------------------
+benchmarks:
+  - type: skill_selection_accuracy
+    kwargs:
+      include_no_skill_cases: true
+      temperature: 0.0
+
+  - type: end_to_end_task_completion
+    kwargs:
+      max_turns: 3
+      temperature: 0.0
+      float_tolerance: 1.0e-2
+
+# ----------------------------------------------------------
+# 5. Runner settings
+# ----------------------------------------------------------
+runs: 3              # 3 runs for statistical parity with config_ollama.yaml
+concurrency: 4       # Frontier APIs handle parallel requests; no sequential-load constraint
+output_dir: ./results

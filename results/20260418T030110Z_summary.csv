@@ -1,0 +1,3 @@
+model,benchmark,skill_config,score,score_std,pass_rate,n_cases,avg_latency_ms,latency_std,avg_tokens,skill_delta,n_runs
+gpt-4.1-mini,end_to_end_task_completion,no_skills,0.859,0.035,85.9%,33,1285.5,93.8,4552,—,3
+gpt-4.1-nano,end_to_end_task_completion,no_skills,0.727,0.000,72.7%,33,526.2,152.1,3194,—,3

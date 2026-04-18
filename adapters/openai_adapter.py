@@ -79,6 +79,10 @@ class OpenAIAdapter(ModelAdapter):
 
         call_kwargs: dict[str, Any] = {**self._default_kwargs, **kwargs}
 
+        # GPT-5.x and reasoning-tier models (o1/o3/o4) renamed max_tokens → max_completion_tokens
+        if self._model.startswith(("gpt-5", "o1", "o3", "o4")) and "max_tokens" in call_kwargs:
+            call_kwargs["max_completion_tokens"] = call_kwargs.pop("max_tokens")
+
         openai_tools: Optional[list[dict[str, Any]]] = None
         if tools:
             openai_tools = [t.to_openai_spec() for t in tools]

@@ -1,6 +1,7 @@
 """Model adapter layer — import concrete adapters from here."""
 
 from .base import ModelAdapter, ModelResponse, ToolDefinition, AdapterError
+from .anthropic_adapter import AnthropicAdapter
 from .openai_adapter import OpenAIAdapter
 from .huggingface_adapter import HuggingFaceAdapter
 from .llamacpp_adapter import LlamaCppAdapter
@@ -11,6 +12,7 @@ __all__ = [
     "ModelResponse",
     "ToolDefinition",
     "AdapterError",
+    "AnthropicAdapter",
     "OpenAIAdapter",
     "HuggingFaceAdapter",
     "LlamaCppAdapter",

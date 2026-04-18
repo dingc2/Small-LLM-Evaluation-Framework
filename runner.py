@@ -215,6 +215,13 @@ def _build_adapter(cfg: ModelConfig) -> ModelAdapter:
             host=cfg.base_url or "http://localhost:11434",
             default_kwargs=cfg.kwargs,
         )
+    elif t == "anthropic":
+        from eval_framework.adapters.anthropic_adapter import AnthropicAdapter
+        return AnthropicAdapter(
+            model=cfg.model or "claude-haiku-4-5-20251001",
+            api_key=cfg.api_key or os.environ.get("ANTHROPIC_API_KEY"),
+            base_url=cfg.base_url,
+        )
     else:
         raise ValueError(f"Unknown adapter type: {cfg.type!r}")
 
