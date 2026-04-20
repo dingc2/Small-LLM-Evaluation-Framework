@@ -46,14 +46,50 @@ SKILL_META = {
 
 
 def _parse_date(s: str) -> datetime:
-    """Parse a date string in common formats."""
-    s = s.strip().strip("'\"")
-    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%B %d, %Y", "%b %d, %Y"):
+    """Parse a date string in common formats.
+
+    Tries ISO first (cheapest, most reliable for the test suite), then
+    common US/EU numeric formats, then natural-language month names.
+    Strips wrapping quotes/punctuation that LLMs sometimes leave attached.
+    """
+    s = s.strip().strip("'\",.;")
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%d/%m/%Y", "%B %d, %Y", "%b %d, %Y",
+                "%B %d %Y", "%b %d %Y", "%d %B %Y", "%d %b %Y"):
         try:
             return datetime.strptime(s, fmt)
         except ValueError:
             continue
     raise ValueError(f"Cannot parse date: {s!r}. Use YYYY-MM-DD format.")
+
+
+# A regex that matches the various date *spans* we accept. We capture the
+# entire span so callers can hand it to ``_parse_date`` which already knows
+# how to dispatch among formats.
+_DATE_SPAN_RE = re.compile(
+    r"""(
+            \d{4}-\d{1,2}-\d{1,2}                              # ISO 2024-01-15
+          | \d{1,2}/\d{1,2}/\d{2,4}                            # 01/15/2024
+          | (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec
+              |January|February|March|April|June|July|August
+              |September|October|November|December)\.?         # month name
+            \s+\d{1,2}(?:,)?\s+\d{4}                           # March 11, 2025
+          | \d{1,2}\s+
+            (?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec
+              |January|February|March|April|June|July|August
+              |September|October|November|December)\.?
+            \s+\d{4}                                            # 11 March 2025
+        )""",
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def _find_dates(text: str) -> list[str]:
+    """Return all date-like spans in *text*, in order, as raw strings.
+
+    A date is identified by ``_DATE_SPAN_RE``; we trim trailing punctuation
+    (commas, periods) that the regex includes only conditionally.
+    """
+    return [m.group(1).strip().rstrip(",.") for m in _DATE_SPAN_RE.finditer(text)]
 
 
 def _days_between(date1: str, date2: str) -> int:
@@ -77,73 +113,71 @@ def _day_of_week(date_str: str) -> str:
 
 
 def _parse_query(query: str) -> dict[str, Any]:
-    """Parse a natural language date query into an operation."""
-    query = query.strip()
+    """Parse a natural language date query into an operation.
 
-    # "days between DATE and DATE"
+    Strategy
+    --------
+    The rigid pattern-at-position approach in the first version broke on
+    natural prose ("what day of the week *was*…", "days *from*/*to*…",
+    "March 11, 2025"). The new approach is: first extract all date spans
+    (`_find_dates`), then look at the *keywords* around them to decide the
+    operation. This decouples date-format handling from op selection.
+    """
+    q = query.strip()
+    ql = q.lower()
+    dates = _find_dates(q)
+
+    # --- Two-date operations (days_between) ---
+    # Triggered by a span-linker keyword (between / from-to) OR by two dates
+    # separated by "to"/"and" even without a leading verb.
+    if len(dates) >= 2:
+        # Look for a range-style linker ("between", "from … to/and", "difference")
+        has_between = re.search(r"\b(between|from|since)\b", ql) is not None
+        has_days_word = re.search(r"\b(days?|weeks?|time)\b", ql) is not None
+        # Bare "date to date" / "date and date" also counts as a range query
+        # since no other interpretation makes sense for two dates.
+        if has_between or has_days_word or re.search(r"\b(to|and|-)\b", ql):
+            return {"op": "days_between", "date1": dates[0], "date2": dates[1]}
+
+    # --- Single-date operations ---
+    if not dates:
+        raise ValueError(f"Could not parse date query: {query!r}")
+
+    date_str = dates[0]
+
+    # add / subtract N days|weeks (keyword-driven, order-insensitive).
     m = re.search(
-        r"days?\s+between\s+(\S+)\s+and\s+(\S+)",
-        query,
-        re.IGNORECASE,
+        r"(add|plus|\+|subtract|minus|-)\s+(\d+)\s*(days?|weeks?)",
+        ql,
     )
     if m:
-        return {"op": "days_between", "date1": m.group(1), "date2": m.group(2)}
-
-    # "add N days to DATE" or "DATE plus N days"
-    m = re.search(
-        r"add\s+(\d+)\s+(days?|weeks?)\s+to\s+(\S+)",
-        query,
-        re.IGNORECASE,
-    )
-    if m:
-        n = int(m.group(1))
-        unit = m.group(2).lower().rstrip("s")
+        verb = m.group(1)
+        n = int(m.group(2))
+        unit = m.group(3).rstrip("s")
         if unit == "week":
             n *= 7
-        return {"op": "add_days", "date": m.group(3), "days": n}
+        if verb in ("subtract", "minus", "-"):
+            n = -n
+        return {"op": "add_days", "date": date_str, "days": n}
 
-    # "subtract N days from DATE"
-    m = re.search(
-        r"subtract\s+(\d+)\s+(days?|weeks?)\s+from\s+(\S+)",
-        query,
-        re.IGNORECASE,
-    )
+    # "N days/weeks after/before DATE"
+    m = re.search(r"(\d+)\s*(days?|weeks?)\s+(after|before)", ql)
     if m:
         n = int(m.group(1))
-        unit = m.group(2).lower().rstrip("s")
-        if unit == "week":
-            n *= 7
-        return {"op": "add_days", "date": m.group(3), "days": -n}
-
-    # "N days after/before DATE"
-    m = re.search(
-        r"(\d+)\s+(days?|weeks?)\s+(after|before)\s+(\S+)",
-        query,
-        re.IGNORECASE,
-    )
-    if m:
-        n = int(m.group(1))
-        unit = m.group(2).lower().rstrip("s")
-        direction = m.group(3).lower()
+        unit = m.group(2).rstrip("s")
+        direction = m.group(3)
         if unit == "week":
             n *= 7
         if direction == "before":
             n = -n
-        return {"op": "add_days", "date": m.group(4), "days": n}
+        return {"op": "add_days", "date": date_str, "days": n}
 
-    # "what day of the week is DATE" or "day of week for DATE"
-    m = re.search(
-        r"(?:what\s+)?day\s+(?:of\s+(?:the\s+)?week\s+)?(?:is\s+|for\s+)?(\d{4}-\d{2}-\d{2})",
-        query,
-        re.IGNORECASE,
-    )
-    if m:
-        return {"op": "day_of_week", "date": m.group(1)}
-
-    # "what day is DATE"
-    m = re.search(r"what\s+day\s+is\s+(\S+)", query, re.IGNORECASE)
-    if m:
-        return {"op": "day_of_week", "date": m.group(1)}
+    # Day-of-week intent: explicit "day of week" / "what day" OR a bare date
+    # with no other verbs (the most natural use of a lone date string).
+    dow_intent = re.search(r"\bday\b.*\bweek\b|\bwhat\s+day\b|\bwhich\s+day\b", ql)
+    has_action_verb = re.search(r"\b(add|subtract|plus|minus|days?|weeks?)\b", ql)
+    if dow_intent or (len(dates) == 1 and not has_action_verb):
+        return {"op": "day_of_week", "date": date_str}
 
     raise ValueError(f"Could not parse date query: {query!r}")
 

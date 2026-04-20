@@ -175,14 +175,109 @@ class _SafeEvaluator(ast.NodeVisitor):
             )
         return val
 
+    def visit_Attribute(self, node: ast.Attribute) -> Any:
+        """Resolve attribute access like ``math.pi`` against the allowlist.
+
+        We support a single level of attribute access on whitelisted module
+        objects (currently just ``math``) so models can write ``math.pi`` /
+        ``math.e`` / ``math.tau`` naturally without us having to enumerate
+        every constant under a top-level name.
+        """
+        if isinstance(node.value, ast.Name):
+            obj = _ALLOWED_NAMES.get(node.value.id)
+            if obj is None:
+                raise ValueError(f"Name {node.value.id!r} is not allowed.")
+            attr_val = getattr(obj, node.attr, None)
+            if attr_val is None or callable(attr_val):
+                # Calls go through visit_Call; here we only resolve constants.
+                raise ValueError(
+                    f"Attribute {node.value.id}.{node.attr} is not a value."
+                )
+            return attr_val
+        raise ValueError("Only simple attribute access is supported (e.g. math.pi)")
+
+
+# ---------------------------------------------------------------------------
+# Pre-processing — normalise model-emitted noise before AST parsing.
+# ---------------------------------------------------------------------------
+# LLMs often wrap or decorate expressions in ways that aren't valid Python:
+# leading "= ", trailing "=", trailing "?", backticks, "the expression …",
+# percent-of-X phrasing, etc. We try to strip these in a fail-safe way before
+# handing the cleaned string to ast.parse. The goal is *robustness*, not
+# magical NL understanding — when the cleaned string is still invalid we
+# surface a clear ValueError.
+
+# Words/phrases that LLMs commonly prepend to a bare expression. Order matters
+# (longer phrases first) so substrings don't shadow longer matches.
+_PROSE_PREFIXES: list[str] = [
+    "the expression is",
+    "the expression",
+    "the answer is",
+    "calculate",
+    "compute",
+    "evaluate",
+    "what is",
+    "what's",
+    "result of",
+    "value of",
+    "equal to",
+    "equals",
+]
+
+
+def _normalise_expression(expr: str) -> str:
+    """Strip LLM-style decoration so the result parses as Python.
+
+    Operations are applied in fail-safe order — each is a no-op if its
+    pattern isn't present, so order matters only for clarity.
+    """
+    expr = expr.strip()
+    # Strip wrapping backticks ``…`` or `…`
+    expr = re.sub(r"^`+|`+$", "", expr).strip()
+    # Strip wrapping straight or curly quotes
+    expr = re.sub(r"^['\"\u2018\u2019\u201c\u201d]+|['\"\u2018\u2019\u201c\u201d]+$", "", expr).strip()
+    # Strip leading/trailing "=" and "?" (often left after "X = ?" phrasing)
+    expr = expr.strip().lstrip("=").rstrip("=?").strip()
+
+    # Strip a recognised prose prefix (case-insensitive). We do this in a loop
+    # so chains like "what is the value of …" peel off one layer at a time.
+    lowered = expr.lower()
+    changed = True
+    while changed:
+        changed = False
+        for prefix in _PROSE_PREFIXES:
+            if lowered.startswith(prefix + " ") or lowered == prefix:
+                expr = expr[len(prefix):].lstrip()
+                lowered = expr.lower()
+                changed = True
+                break
+
+    # "X% of Y" → "(X / 100) * Y". Done before the generic ^→** rewrite
+    # because % means modulo in Python, so we must rewrite percent semantics.
+    expr = re.sub(
+        r"(-?\d+(?:\.\d+)?)\s*%\s*of\s*(-?\d+(?:\.\d+)?)",
+        r"((\1/100)*\2)",
+        expr,
+        flags=re.IGNORECASE,
+    )
+    # Bare "X%" → (X/100). The look-ahead excludes cases where % is
+    # followed by another number (that's Python modulo, e.g. "10 % 3"),
+    # so we only rewrite genuine percent literals like "50%" or "50% + 20".
+    expr = re.sub(
+        r"(-?\d+(?:\.\d+)?)\s*%(?!\s*\d)",
+        r"(\1/100)",
+        expr,
+    )
+
+    # LLMs often emit ^ for exponentiation; map it to Python's ** operator.
+    expr = re.sub(r"\^", "**", expr)
+
+    return expr.strip()
+
 
 def _evaluate_expression(expr: str) -> Any:
     """Parse and safely evaluate an arithmetic expression string."""
-    expr = expr.strip()
-    # Strip leading/trailing quotes that might come from a model
-    expr = re.sub(r"^['\"]|['\"]$", "", expr)
-    # LLMs often emit ^ for exponentiation; map it to Python power operator.
-    expr = re.sub(r"\^", "**", expr)
+    expr = _normalise_expression(expr)
 
     try:
         tree = ast.parse(expr, mode="eval")

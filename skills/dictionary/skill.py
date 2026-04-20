@@ -122,30 +122,79 @@ _DICTIONARY: dict[str, dict[str, str]] = {
 }
 
 
+# Words we strip when hunting for the target word inside a noisy query.
+# Anything *functional* for the user's intent (define / mean / word / …)
+# plus a small set of polite fillers. Kept as a set for O(1) membership.
+_STOPWORDS: frozenset[str] = frozenset({
+    "define", "definition", "of", "what", "whats", "does", "is", "mean",
+    "means", "meaning", "the", "a", "an", "look", "up", "can", "you",
+    "please", "tell", "me", "word", "term", "about", "for",
+    "in", "dictionary", "like", "to",
+})
+
+
 def _extract_word(query: str) -> str:
-    """Extract the word to look up from a natural language query."""
-    query = query.strip().lower()
+    """Extract the best candidate word from a natural-language query.
 
-    # Remove common prefixes
-    for prefix in [
-        "define ", "definition of ", "what does ", "what is a ",
-        "what is an ", "what is the ", "what is ",
-        "look up ", "meaning of ", "the meaning of ",
-    ]:
-        if query.startswith(prefix):
-            query = query[len(prefix):]
-            break
+    Priority order — we try each strategy and return on the first that
+    yields a non-empty candidate. This generalises past the old
+    "strip-prefixes-at-start-only" approach which broke on polite wrappers
+    ("Can you please define 'latency'") and double-quoted words.
 
-    # Remove trailing punctuation and quotes
-    query = re.sub(r"['\"\?\.\!]+$", "", query)
-    query = re.sub(r"^['\"]|['\"]$", "", query)
+    1. First quoted token (single, double, curly, or back-quotes) — the
+       model's most explicit signal of which word matters.
+    2. First non-stopword after stripping punctuation — handles "define X",
+       "what does X mean", "the meaning of X", "X" (bare) alike.
+    """
+    q = query.strip()
 
-    # Remove trailing "mean" from "what does X mean"
-    query = re.sub(r"\s+mean$", "", query)
+    # 1. Quoted word: 'X' or "X" or ‘X’ / “X” / `X`
+    m = re.search(r"['\"\u2018\u201c`]([^'\"\u2019\u201d`]+)['\"\u2019\u201d`]", q)
+    if m:
+        candidate = m.group(1).strip().lower()
+        # Strip any internal punctuation that might have snuck in.
+        candidate = re.sub(r"[^a-z0-9\-]", "", candidate)
+        if candidate:
+            return candidate
 
-    # Take just the first word if multiple remain (after cleanup)
-    words = query.strip().split()
-    return words[0] if words else ""
+    # 2. First non-stopword token. Lower-case, drop all non-letters, then
+    #    walk left-to-right ignoring stopwords.
+    lowered = q.lower()
+    tokens = re.findall(r"[a-z][a-z0-9\-]*", lowered)
+    for tok in tokens:
+        if tok not in _STOPWORDS:
+            return tok
+
+    # Nothing usable — fall back to the raw stripped string so the caller
+    # surfaces a "word not found" error with the user's input visible.
+    return re.sub(r"[^a-z0-9\-]", "", lowered)
+
+
+# Simple English-plural → singular reductions. Not a full morphology
+# library, just enough to catch the common case where a model says
+# "algorithms" when it means "algorithm". Applied only as a fallback when
+# the direct lookup fails.
+_PLURAL_REDUCTIONS: list[tuple[str, str]] = [
+    ("ies", "y"),   # babies → baby
+    ("ses", "s"),   # bases → base (lossy but rarely wrong for our vocab)
+    ("es", ""),     # boxes → box
+    ("s", ""),      # cats → cat
+]
+
+
+def _singularize(word: str) -> str | None:
+    """Return a plausible singular form of *word* if it looks plural.
+
+    Returns None when no reduction applies (word is ≤2 chars or already
+    singular-looking). The caller should try the reduced form against the
+    dictionary and fall back to the original on miss.
+    """
+    if len(word) <= 2:
+        return None
+    for suffix, replacement in _PLURAL_REDUCTIONS:
+        if word.endswith(suffix) and len(word) - len(suffix) + len(replacement) >= 3:
+            return word[: len(word) - len(suffix)] + replacement
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -170,11 +219,22 @@ def execute(input: Any) -> Any:
     try:
         word = params.get("word", _extract_word(query)).lower().strip()
 
-        if word in _DICTIONARY:
-            entry = _DICTIONARY[word]
+        # Try direct lookup, then a singular-form fallback for plurals
+        # ("algorithms" → "algorithm"). The fallback only runs when the
+        # direct lookup misses and the reduction yields a real word, so
+        # we never silently mangle a successful lookup.
+        matched = word if word in _DICTIONARY else None
+        if matched is None:
+            singular = _singularize(word)
+            if singular and singular in _DICTIONARY:
+                matched = singular
+
+        if matched is not None:
+            entry = _DICTIONARY[matched]
             result = entry["definition"]
             meta = {
-                "word": word,
+                "word": matched,
+                "original_query_word": word,
                 "part_of_speech": entry["part_of_speech"],
                 "example": entry["example"],
                 "full_entry": entry,

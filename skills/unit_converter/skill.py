@@ -256,11 +256,18 @@ def _find_category(unit: str) -> tuple[str, dict[str, float]] | None:
 
 
 def _convert_temperature(value: float, from_unit: str, to_unit: str) -> float:
-    f = from_unit.upper().rstrip("°")
-    t = to_unit.upper().rstrip("°")
+    # Strip any combination of degree / bullet / circle chars that LLMs emit,
+    # plus whitespace. `°` itself plus °F/°C style prefixes.
+    f = from_unit.upper().replace("°", "").strip()
+    t = to_unit.upper().replace("°", "").strip()
 
-    # Normalise
-    for alias, canonical in [("CELSIUS", "C"), ("FAHRENHEIT", "F"), ("KELVIN", "K")]:
+    # Normalise full-word aliases and common abbreviations.
+    for alias, canonical in [
+        ("CELSIUS", "C"), ("CENTIGRADE", "C"),
+        ("FAHRENHEIT", "F"),
+        ("KELVIN", "K"),
+        ("DEG C", "C"), ("DEG F", "F"), ("DEG K", "K"),
+    ]:
         if f == alias:
             f = canonical
         if t == alias:
@@ -289,7 +296,7 @@ def _convert_temperature(value: float, from_unit: str, to_unit: str) -> float:
 
 def _is_temperature(unit: str) -> bool:
     u = unit.upper().replace("°", "").strip()
-    return u in ("C", "F", "K", "CELSIUS", "FAHRENHEIT", "KELVIN")
+    return u in ("C", "F", "K", "CELSIUS", "FAHRENHEIT", "KELVIN", "CENTIGRADE")
 
 
 def _convert(value: float, from_unit: str, to_unit: str) -> float:
@@ -317,35 +324,50 @@ def _convert(value: float, from_unit: str, to_unit: str) -> float:
 
 
 def _parse_query(query: str) -> tuple[float, str, str]:
-    """Parse natural language conversion query."""
+    """Parse natural language conversion query.
+
+    Changes vs. the original:
+    - ``re.search`` instead of ``re.match`` so prose prefixes ("I need to
+      convert …", "what is …") don't kill parsing.
+    - ``\\s*`` (not ``\\s+``) between the number and the unit so "5km" works.
+    - Explicit unit token class ``[A-Za-z°/]+`` so the degree symbol isn't
+      swallowed by a whitespace-only separator.
+    - ``how many`` and ``X unit = unit`` fallbacks unchanged in intent.
+    """
     query = query.strip()
+    # Normalise some typographic noise that breaks tokenisation.
+    q = query.replace("\u00b0", "°")  # ensure canonical degree char
 
-    # Pattern: "convert X unit to unit"
-    m = re.match(
-        r"(?:convert\s+)?(-?\d+(?:\.\d+)?)\s+(\S+)\s+(?:to|in|into)\s+(\S+)",
-        query,
+    # Unit token: letters, optional slash (m/s), optional degree prefix/suffix.
+    unit_tok = r"[A-Za-z°µ]+(?:/[A-Za-z°µ]+)?"
+
+    # 1. "convert? X[unit] to/in/into unit"
+    m = re.search(
+        rf"(?:convert\s+)?(-?\d+(?:\.\d+)?)\s*({unit_tok})\s+(?:to|in|into|=)\s*\??\s*({unit_tok})",
+        q,
         re.IGNORECASE,
     )
     if m:
         return float(m.group(1)), m.group(2), m.group(3)
 
-    # Pattern: "X unit = ? unit" or "X unit in unit"
-    m = re.match(
-        r"(-?\d+(?:\.\d+)?)\s+(\S+)\s*(?:=|in|to)\s*\??\s*(\S+)",
-        query,
-        re.IGNORECASE,
-    )
-    if m:
-        return float(m.group(1)), m.group(2), m.group(3)
-
-    # Pattern: "how many unit in X unit"
-    m = re.match(
-        r"how\s+many\s+(\S+)\s+(?:in|are\s+in)\s+(-?\d+(?:\.\d+)?)\s+(\S+)",
-        query,
+    # 2. "how many <unit> (are )?in X <unit>"
+    m = re.search(
+        rf"how\s+many\s+({unit_tok})\s+(?:are\s+)?in\s+(-?\d+(?:\.\d+)?)\s*({unit_tok})",
+        q,
         re.IGNORECASE,
     )
     if m:
         return float(m.group(2)), m.group(3), m.group(1)
+
+    # 3. Last-ditch: just a number + unit somewhere followed by "to/in" + unit.
+    # Handles "what is 100 Fahrenheit in Celsius" where there's no convert verb.
+    m = re.search(
+        rf"(-?\d+(?:\.\d+)?)\s*({unit_tok})\s+(?:to|in|into)\s+({unit_tok})",
+        q,
+        re.IGNORECASE,
+    )
+    if m:
+        return float(m.group(1)), m.group(2), m.group(3)
 
     raise ValueError(f"Could not parse conversion query: {query!r}")
 
