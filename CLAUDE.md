@@ -1,8 +1,12 @@
 # CLAUDE.md
 
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
 ## Project Context
 
 Cheng is a graduate student in a **Generative AI class at Vanderbilt**. This is his course project. The research question: **"Can small LLMs (<20B) with skill/tool augmentation match or exceed larger LLMs without tools?"** The rubric has categories: Problem Statement (10), Methodology (50), Implementation (20), Assessment (15), Model Cards (5), Critical Analysis (10), Documentation (5), Presentation (10) — max 135 pts. **Timeline is tight (1 week).**
+
+The comparison has two arms: (a) local 10-model sweep with/without tools (`config_ollama.yaml`) and (b) frontier small models no-tools baseline (`config_frontier.yaml`: gpt-4.1-mini/nano, gpt-5.4-mini) — so "larger LLMs without tools" spans both the 20B local upper bound and paid-API frontier models.
 
 ## Common Commands
 
@@ -14,11 +18,18 @@ All commands run from the **`sLLM_eval_framework/` project root** (the package d
 # Run tests (no Ollama needed — uses mock adapters)
 pytest tests/ -v
 
+# Run a single test file / single test function
+pytest tests/test_benchmarks.py -v
+pytest tests/test_benchmarks.py::test_name -v
+
 # Quick smoke test (3 Ministral models, ~10-20 min, requires Ollama running)
 python runner.py --config config_quick.yaml --verbose
 
 # Full 10-model sweep (~3 hours with runs=3 on 24GB M-series)
 python runner.py --config config_ollama.yaml --verbose
+
+# Frontier no-tools baseline (paid OpenAI APIs; requires OPENAI_API_KEY)
+OPENAI_API_KEY=sk-... python runner.py --config config_frontier.yaml --verbose
 
 # Merge individual model runs into one aggregated file
 python merge_results.py results/
@@ -51,7 +62,7 @@ Cross-product sweep: **model x skill_config x benchmark x n_runs**
 
 ```
 EvaluationRunner (runner.py)
-  ├── Adapters: OllamaAdapter (primary), OpenAI, HuggingFace, LlamaCpp
+  ├── Adapters: OllamaAdapter (primary), OpenAI, Anthropic, HuggingFace, LlamaCpp
   ├── Skills: calculator, unit_converter (+ clinical lab units), dictionary, datetime_calc, powerlifting (IPF Dots)
   ├── Benchmarks: skill_selection (33 cases), end_to_end (33 cases)
   ├── Skill configs: all_skills (5 tools) vs no_skills (baseline)
@@ -93,11 +104,13 @@ Three pluggable ABCs in `base.py` files: `ModelAdapter`, `Benchmark`, `SkillRegi
 - `charts_gen.py` — Standalone chart script with hardcoded results (update after re-runs)
 - `config_ollama.yaml` — Full sweep config (10 models, runs=3)
 - `config_quick.yaml` — Smoke test config (3 Ministral models, runs=1)
+- `config_frontier.yaml` — Frontier no-tools baseline (gpt-4.1-mini/nano + gpt-5.4-mini, runs=3, concurrency=4)
 - `model_cards.md` — Model cards, data card, ethical considerations
 - `README.md` — Full documentation including critical analysis section and SkillsBench provenance notes
 - `benchmarks/end_to_end.py` — Multi-turn tool-call benchmark with thinking-tag stripping
 - `benchmarks/skill_selection.py` — Skill routing accuracy benchmark
 - `adapters/ollama_adapter.py` — Native Ollama HTTP adapter
+- `adapters/openai_adapter.py`, `adapters/anthropic_adapter.py` — Frontier API adapters (env-var API keys)
 - `skills/powerlifting/skill.py` — IPF Dots (2019) coefficient (port from benchflow-ai/skillsbench)
 - `benchmarks/utils.py` — Centralized think-tag stripping utilities
 
@@ -107,11 +120,6 @@ Three pluggable ABCs in `base.py` files: `ModelAdapter`, `Benchmark`, `SkillRegi
 - **Qwen3.5 does NOT show clean diminishing returns anymore.** Uplift by size: 2B +0.576, 4B +0.808 (largest), 9B +0.758. The 4B is the peak, not the 2B. The more honest framing is "small-to-mid Qwen models gain the most from tools; the 20B upper bound leaves less headroom (gpt-oss:20b: +0.121)."
 - **Smallest uplift is actually nemotron-3-nano:4b (+0.141)** and gpt-oss:20b (+0.121) — not gemma4:e2b. Nemotron's baseline is surprisingly strong for a 4B model.
 - **Skill selection accuracy is near-perfect** across the board: 9/10 models at ≥0.94, most at 1.00. Routing is not the bottleneck; tool-call formatting is.
-
-## What Still Needs Doing
-
-- **Full sweep complete** (2026-04-17, run `20260417T033055Z`, ~3 hours wall-clock) — charts regenerated via `analyze.py`.
-- Consider creating the final **presentation slides** (.pptx) for the class — rubric allocates 10 pts.
 
 ## Recent Improvements
 
