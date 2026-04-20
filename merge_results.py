@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ---------------------------------------------------------------------------
-# Path shim — makes `python merge_results.py` work from inside eval_framework/
+# Path shim — makes `python merge_results.py` work from inside sLLM_eval_framework/
 # ---------------------------------------------------------------------------
 from __future__ import annotations
 import sys as _sys, os as _os
@@ -13,7 +13,7 @@ Merge multiple runner result JSON files into a single aggregated_results.json.
 Allows incremental model runs: run a few models today, a few more tomorrow,
 then merge all results into one file for analysis.
 
-Usage (run from inside eval_framework/)
+Usage (run from inside sLLM_eval_framework/)
 -----
     # Merge all *_results.json files in results/ directory
     python merge_results.py results/
@@ -111,10 +111,10 @@ def merge_result_files(
 
     # Reconstruct BenchmarkResult Pydantic objects so we can reuse the
     # comparison table builder from runner.py
-    from eval_framework.benchmarks.base import BenchmarkResult
+    from sLLM_eval_framework.benchmarks.base import BenchmarkResult
     result_objects = [BenchmarkResult.model_validate(r) for r in merged_results]
 
-    from eval_framework.runner import _build_comparison_table
+    from sLLM_eval_framework.runner import _build_comparison_table
     comparison_table = _build_comparison_table(result_objects)
 
     # Build merged metadata

@@ -34,7 +34,7 @@ This project evaluates this hypothesis by:
 ## Directory Structure
 
 ```
-eval_framework/
+sLLM_eval_framework/
 ├── adapters/                    # Model adapter layer
 │   ├── base.py                  #   ABC + ToolDefinition / ModelResponse
 │   ├── openai_adapter.py        #   OpenAI-compatible API
@@ -81,7 +81,7 @@ eval_framework/
 ### Step 1: Install Dependencies
 
 ```bash
-cd eval_framework
+# Run from the sLLM_eval_framework/ project root
 pip install -r requirements.txt
 ```
 
@@ -108,8 +108,7 @@ ollama pull gpt-oss:20b         # ~13 GB
 ### Step 3: Smoke Test
 
 ```bash
-# All commands run from inside eval_framework/
-cd eval_framework
+# All commands run from the sLLM_eval_framework/ project root
 
 # Quick test with a single model (~2–3 min)
 python runner.py --config config_quick.yaml --verbose
@@ -380,7 +379,7 @@ SKILL_META = {
 }
 
 def execute(input):
-    from eval_framework.skills.registry import SkillOutput
+    from sLLM_eval_framework.skills.registry import SkillOutput
     return SkillOutput(result="...", success=True)
 ```
 

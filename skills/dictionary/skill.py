@@ -31,7 +31,7 @@ SKILL_META = {
         r"\bdictionary\b",
     ],
     "version": "1.0.0",
-    "author": "eval_framework",
+    "author": "sLLM_eval_framework",
     "examples": [
         {"input": "define ephemeral", "expected": "lasting for a very short time"},
         {"input": "what does 'ubiquitous' mean", "expected": "present, appearing, or found everywhere"},
@@ -212,7 +212,7 @@ def execute(input: Any) -> Any:
         params = input.get("parameters", {})
 
     try:
-        from eval_framework.skills.registry import SkillOutput
+        from sLLM_eval_framework.skills.registry import SkillOutput
     except ImportError:
         SkillOutput = None
 

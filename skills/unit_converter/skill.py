@@ -33,7 +33,7 @@ SKILL_META = {
         r"\b(mg/dL|mmol/L|µmol/L|umol/L|ng/mL|nmol/L|g/dL|g/L)\b",
     ],
     "version": "1.1.0",
-    "author": "eval_framework",
+    "author": "sLLM_eval_framework",
     "examples": [
         {"input": "convert 5 km to miles", "expected": 3.10686},
         {"input": "convert 100 F to C", "expected": 37.7778},
@@ -387,7 +387,7 @@ def execute(input: Any) -> Any:
         params = input.get("parameters", {})
 
     try:
-        from eval_framework.skills.registry import SkillOutput
+        from sLLM_eval_framework.skills.registry import SkillOutput
     except ImportError:
         SkillOutput = None
 

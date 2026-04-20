@@ -60,6 +60,6 @@ Sex can be "M"/"F" or "male"/"female" (case-insensitive).
 ## Provenance
 IPF Dots coefficients sourced from the SkillsBench
 `powerlifting-coef-calc` task (benchflow-ai/skillsbench) for cross-check.
-This skill re-implements the formula in the eval_framework contract; the
+This skill re-implements the formula in the sLLM_eval_framework contract; the
 upstream task also tests spreadsheet-style file writing, which is out of
 scope here (prompt-based only, no file I/O).

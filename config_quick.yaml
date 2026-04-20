@@ -3,7 +3,7 @@
 # ============================================================
 #
 # Usage:
-#   cd eval_framework
+#   cd sLLM_eval_framework
 #   python runner.py --config config_quick.yaml --verbose
 
 models:

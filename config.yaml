@@ -3,7 +3,7 @@
 # ============================================================
 #
 # Run with:
-#   python -m eval_framework.runner --config config.yaml --verbose
+#   python -m sLLM_eval_framework.runner --config config.yaml --verbose
 #
 # All paths are relative to the directory you run from.
 

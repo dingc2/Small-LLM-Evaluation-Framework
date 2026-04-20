@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # ---------------------------------------------------------------------------
-# Path shim — makes `python analyze.py` work from inside eval_framework/
+# Path shim — makes `python analyze.py` work from inside sLLM_eval_framework/
 # ---------------------------------------------------------------------------
 from __future__ import annotations
 import sys as _sys, os as _os
@@ -18,7 +18,7 @@ Reads the JSON output from the evaluation runner and produces:
   5. Model-size scatter plot             (PNG)
   6. Per-skill breakdown bar chart       (PNG)
 
-Usage (run from inside eval_framework/)
+Usage (run from inside sLLM_eval_framework/)
 -----
     python analyze.py results/<run_id>_results.json
     python analyze.py results/<run_id>_results.json --output results/charts

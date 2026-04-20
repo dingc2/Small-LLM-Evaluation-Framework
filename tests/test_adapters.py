@@ -15,7 +15,7 @@ import asyncio
 import pytest
 from typing import Any, Optional
 
-from eval_framework.adapters.base import (
+from sLLM_eval_framework.adapters.base import (
     AdapterError,
     ModelAdapter,
     ModelResponse,

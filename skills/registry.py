@@ -150,7 +150,7 @@ class Skill:
 
     def to_tool_definition(self) -> "Any":
         """Convert this skill to an adapter ToolDefinition for tool-call prompting."""
-        from eval_framework.adapters.base import ToolDefinition  # late import
+        from sLLM_eval_framework.adapters.base import ToolDefinition  # late import
 
         return ToolDefinition(
             name=self.name,

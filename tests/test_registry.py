@@ -14,7 +14,7 @@ import pytest
 # Ensure the project root is on the path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from eval_framework.skills.registry import (
+from sLLM_eval_framework.skills.registry import (
     Skill,
     SkillInput,
     SkillOutput,

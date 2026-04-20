@@ -261,7 +261,7 @@ class SkillSelectionBenchmark(Benchmark):
         known_tokens: list[str],
         **kwargs: Any,
     ) -> TestResult:
-        from eval_framework.adapters.base import AdapterError
+        from sLLM_eval_framework.adapters.base import AdapterError
 
         try:
             response = await model.generate(

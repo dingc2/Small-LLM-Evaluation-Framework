@@ -7,7 +7,7 @@ score.  Formula and coefficients are the current IPF Dots specification
 Rules).
 
 Ported from the SkillsBench ``powerlifting-coef-calc`` task as reference
-only — re-implemented to conform to the eval_framework skill contract
+only — re-implemented to conform to the sLLM_eval_framework skill contract
 (``SKILL_META`` + ``execute(SkillInput) -> SkillOutput``).
 """
 
@@ -37,7 +37,7 @@ SKILL_META = {
         r"\bbodyweight\b",
     ],
     "version": "1.0.0",
-    "author": "eval_framework",
+    "author": "sLLM_eval_framework",
     "examples": [
         {"input": "Dots for male 83.2kg, 620kg total", "expected": 417.99},
         {"input": "Dots for female 57.3kg, 390kg total", "expected": 445.29},
@@ -144,7 +144,7 @@ def execute(input: Any) -> Any:  # noqa: A002
         params = input.get("parameters", {})
 
     try:
-        from eval_framework.skills.registry import SkillOutput  # noqa: PLC0415
+        from sLLM_eval_framework.skills.registry import SkillOutput  # noqa: PLC0415
     except ImportError:
         SkillOutput = None
 

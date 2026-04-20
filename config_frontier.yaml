@@ -12,7 +12,7 @@
 # augmentation match or exceed larger frontier LLMs without tools?
 #
 # Run:
-#   cd eval_framework
+#   cd sLLM_eval_framework
 #   ANTHROPIC_API_KEY=sk-ant-... OPENAI_API_KEY=sk-... \
 #     python runner.py --config config_frontier.yaml --verbose
 #

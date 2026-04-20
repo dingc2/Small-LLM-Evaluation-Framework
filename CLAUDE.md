@@ -6,10 +6,10 @@ Cheng is a graduate student in a **Generative AI class at Vanderbilt**. This is 
 
 ## Common Commands
 
-All commands run from **inside `eval_framework/`** (not the parent directory). A `sys.path` shim in `runner.py` and `analyze.py` makes this work.
+All commands run from the **`sLLM_eval_framework/` project root** (the package directory itself — there is no longer a nested subfolder). A `sys.path` shim in `runner.py` and `analyze.py` adds the parent directory so `from sLLM_eval_framework...` imports resolve.
 
 ```bash
-cd eval_framework
+# from the sLLM_eval_framework/ project root
 
 # Run tests (no Ollama needed — uses mock adapters)
 pytest tests/ -v
@@ -68,7 +68,7 @@ Three pluggable ABCs in `base.py` files: `ModelAdapter`, `Benchmark`, `SkillRegi
 
 3. **Dictionary scoring** (`end_to_end.py`): Exact string match is impossible for definitions. Uses keyword-overlap scoring (60% threshold on words >= 3 chars).
 
-4. **Path/import issues**: `runner.py` and `analyze.py` have `sys.path` shims so they work when run from inside `eval_framework/`. Config paths like `./skills` and `./results` are relative to `eval_framework/`.
+4. **Path/import issues**: `runner.py` and `analyze.py` have `sys.path` shims that insert the parent directory of the project so `from sLLM_eval_framework...` imports resolve when running scripts directly. Config paths like `./skills` and `./results` are relative to the `sLLM_eval_framework/` project root.
 
 ## Key Design Decisions
 

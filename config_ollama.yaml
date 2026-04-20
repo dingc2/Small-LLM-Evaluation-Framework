@@ -15,7 +15,7 @@
 #   gemma4:e4b           ~9.6 GB  (Google)
 #
 # Run:
-#   cd eval_framework
+#   cd sLLM_eval_framework
 #   python runner.py --config config_ollama.yaml --verbose
 
 # ----------------------------------------------------------

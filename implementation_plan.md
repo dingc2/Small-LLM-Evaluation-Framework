@@ -13,7 +13,7 @@ Implementation of the v2 plan is **mostly complete**. The code, test cases, and 
 - [x] Appended 13 cases to `benchmarks/end_to_end.py` `_BUILTIN_CASES` (8 lab + 5 dots). Total e2e cases: 20 → 33.
 - [x] Added skill-selection cases to `benchmarks/skill_selection.py`: 3 new clinical cases appended to `_UNIT_CONVERTER_CASES`, new `_POWERLIFTING_CASES` (5), registered in `_build_test_cases`, added a powerlifting example to the few-shot system prompt. Total routing cases: 25 → 33.
 - [x] Added ~20 unit tests to `tests/test_registry.py` (10 clinical + 10 powerlifting).
-- [x] Created symlink `.claude/worktrees/eval_framework -> hopeful-hawking-3ba36f` so `from eval_framework.skills.registry import ...` resolves for pytest inside the worktree. Existing 43 registry tests pass.
+- [x] Created symlink `.claude/worktrees/sLLM_eval_framework -> hopeful-hawking-3ba36f` so `from sLLM_eval_framework.skills.registry import ...` resolves for pytest inside the worktree. Existing 43 registry tests pass.
 
 ---
 
@@ -22,7 +22,7 @@ Implementation of the v2 plan is **mostly complete**. The code, test cases, and 
 ### 1. Run the full pytest suite
 
 ```bash
-cd eval_framework   # or the worktree root
+# from the sLLM_eval_framework/ project root (or the worktree root)
 pytest tests/ -v
 ```
 
@@ -66,7 +66,7 @@ If any test fails, the most likely culprits are:
 
 - **Small-model JSON compliance**: Gemma4:e2b has negative skill uplift because it can't format tool-call JSON. Adding `powerlifting` (multi-field schema) may worsen this for sub-4B models. This is a finding, not a bug — record it in `README.md`'s critical-analysis section after the re-run.
 - **Quantization non-determinism**: `runs=3` + aggregated DB already mitigates. Keep the score ± σ reporting.
-- **Worktree symlink**: `.claude/worktrees/eval_framework` is a workspace convenience symlink pointing at `hopeful-hawking-3ba36f/`. It is **not** committed — it only exists to make test imports resolve inside the worktree. Remove before merge.
+- **Worktree symlink**: `.claude/worktrees/sLLM_eval_framework` is a workspace convenience symlink pointing at `hopeful-hawking-3ba36f/`. It is **not** committed — it only exists to make test imports resolve inside the worktree. Remove before merge.
 
 ---
 

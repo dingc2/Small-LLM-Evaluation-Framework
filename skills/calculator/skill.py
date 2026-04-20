@@ -36,7 +36,7 @@ SKILL_META = {
         r"sqrt|sin|cos|tan|log|ceil|floor",
     ],
     "version": "1.0.0",
-    "author": "eval_framework",
+    "author": "sLLM_eval_framework",
     # Extra metadata used by end-to-end benchmark
     "examples": [
         {"input": "2 + 2", "expected": 4},
@@ -321,7 +321,7 @@ def execute(input: Any) -> Any:  # noqa: A002
 
     try:
         # Import here to keep skill standalone when loaded directly
-        from eval_framework.skills.registry import SkillOutput  # noqa: PLC0415
+        from sLLM_eval_framework.skills.registry import SkillOutput  # noqa: PLC0415
     except ImportError:
         # Fallback: return a plain dict (useful when running skill in isolation)
         try:

@@ -3,7 +3,7 @@ Evaluation runner — orchestrates the full (model × skill_config × benchmark)
 
 Usage
 -----
-Run from inside the eval_framework/ directory:
+Run from inside the sLLM_eval_framework/ directory:
 
     # Quick smoke test
     python runner.py --config config_quick.yaml --verbose
@@ -33,7 +33,7 @@ Config shape (YAML / dict)
         model: gpt-4o-mini
         api_key: sk-...           # optional; falls back to OPENAI_API_KEY
 
-    skills_dir: ./skills          # relative to eval_framework/
+    skills_dir: ./skills          # relative to sLLM_eval_framework/
     skill_configs:
       - name: all_skills          # label used in results
         enabled: []               # empty = all skills; list names to restrict
@@ -47,13 +47,13 @@ Config shape (YAML / dict)
           max_turns: 3
 
     runs: 3                       # repeat each combination N times (for variance)
-    output_dir: ./results         # relative to eval_framework/
+    output_dir: ./results         # relative to sLLM_eval_framework/
     concurrency: 1                # 1 = sequential (best for Ollama)
 """
 
 from __future__ import annotations
 
-# Path shim — makes `python runner.py` work from inside eval_framework/
+# Path shim — makes `python runner.py` work from inside sLLM_eval_framework/
 import sys as _sys, os as _os
 _sys.path.insert(0, _os.path.dirname(_os.path.dirname(_os.path.abspath(__file__))))
 
@@ -70,9 +70,9 @@ from typing import Any, Optional
 import yaml
 from pydantic import BaseModel, Field, field_validator
 
-from eval_framework.adapters.base import ModelAdapter
-from eval_framework.benchmarks.base import Benchmark, BenchmarkResult
-from eval_framework.skills.registry import SkillRegistry
+from sLLM_eval_framework.adapters.base import ModelAdapter
+from sLLM_eval_framework.benchmarks.base import Benchmark, BenchmarkResult
+from sLLM_eval_framework.skills.registry import SkillRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -189,7 +189,7 @@ class RunSummary(BaseModel):
 def _build_adapter(cfg: ModelConfig) -> ModelAdapter:
     t = cfg.type.lower()
     if t == "openai":
-        from eval_framework.adapters.openai_adapter import OpenAIAdapter
+        from sLLM_eval_framework.adapters.openai_adapter import OpenAIAdapter
         return OpenAIAdapter(
             model=cfg.model or "gpt-4o-mini",
             api_key=cfg.api_key or os.environ.get("OPENAI_API_KEY"),
@@ -197,26 +197,26 @@ def _build_adapter(cfg: ModelConfig) -> ModelAdapter:
             default_kwargs=cfg.kwargs,
         )
     elif t in ("huggingface", "hf"):
-        from eval_framework.adapters.huggingface_adapter import HuggingFaceAdapter
+        from sLLM_eval_framework.adapters.huggingface_adapter import HuggingFaceAdapter
         return HuggingFaceAdapter(
             model_id=cfg.model_id or cfg.model or "",
             **cfg.kwargs,
         )
     elif t in ("llamacpp", "llama_cpp", "llama"):
-        from eval_framework.adapters.llamacpp_adapter import LlamaCppAdapter
+        from sLLM_eval_framework.adapters.llamacpp_adapter import LlamaCppAdapter
         return LlamaCppAdapter(
             model_path=cfg.model_path or "",
             **cfg.kwargs,
         )
     elif t == "ollama":
-        from eval_framework.adapters.ollama_adapter import OllamaAdapter
+        from sLLM_eval_framework.adapters.ollama_adapter import OllamaAdapter
         return OllamaAdapter(
             model=cfg.model or "gemma3:4b",
             host=cfg.base_url or "http://localhost:11434",
             default_kwargs=cfg.kwargs,
         )
     elif t == "anthropic":
-        from eval_framework.adapters.anthropic_adapter import AnthropicAdapter
+        from sLLM_eval_framework.adapters.anthropic_adapter import AnthropicAdapter
         return AnthropicAdapter(
             model=cfg.model or "claude-haiku-4-5-20251001",
             api_key=cfg.api_key or os.environ.get("ANTHROPIC_API_KEY"),
@@ -234,10 +234,10 @@ def _build_adapter(cfg: ModelConfig) -> ModelAdapter:
 def _build_benchmark(cfg: BenchmarkConfig) -> Benchmark:
     t = cfg.type.lower()
     if t == "skill_selection_accuracy":
-        from eval_framework.benchmarks.skill_selection import SkillSelectionBenchmark
+        from sLLM_eval_framework.benchmarks.skill_selection import SkillSelectionBenchmark
         return SkillSelectionBenchmark(**cfg.kwargs)
     elif t == "end_to_end_task_completion":
-        from eval_framework.benchmarks.end_to_end import EndToEndBenchmark
+        from sLLM_eval_framework.benchmarks.end_to_end import EndToEndBenchmark
         return EndToEndBenchmark(**cfg.kwargs)
     else:
         raise ValueError(

@@ -31,7 +31,7 @@ SKILL_META = {
         r"\bhow\s+(long|many\s+days)\b",
     ],
     "version": "1.0.0",
-    "author": "eval_framework",
+    "author": "sLLM_eval_framework",
     "examples": [
         {"input": "days between 2024-01-01 and 2024-12-31", "expected": 365},
         {"input": "what day of the week is 2024-07-04", "expected": "Thursday"},
@@ -197,7 +197,7 @@ def execute(input: Any) -> Any:
         params = input.get("parameters", {})
 
     try:
-        from eval_framework.skills.registry import SkillOutput
+        from sLLM_eval_framework.skills.registry import SkillOutput
     except ImportError:
         SkillOutput = None
 

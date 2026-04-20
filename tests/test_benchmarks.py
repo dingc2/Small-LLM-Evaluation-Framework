@@ -16,11 +16,11 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-from eval_framework.adapters.base import ModelAdapter, ModelResponse, ToolCall, ToolDefinition
-from eval_framework.benchmarks.base import Benchmark, BenchmarkResult, TestCase, TestResult
-from eval_framework.benchmarks.end_to_end import EndToEndBenchmark, _default_scorer
-from eval_framework.benchmarks.skill_selection import SkillSelectionBenchmark
-from eval_framework.skills.registry import SkillRegistry
+from sLLM_eval_framework.adapters.base import ModelAdapter, ModelResponse, ToolCall, ToolDefinition
+from sLLM_eval_framework.benchmarks.base import Benchmark, BenchmarkResult, TestCase, TestResult
+from sLLM_eval_framework.benchmarks.end_to_end import EndToEndBenchmark, _default_scorer
+from sLLM_eval_framework.benchmarks.skill_selection import SkillSelectionBenchmark
+from sLLM_eval_framework.skills.registry import SkillRegistry
 
 SKILLS_DIR = Path(__file__).parent.parent / "skills"
 
@@ -604,7 +604,7 @@ def test_default_scorer_dictionary_incorrect_fails():
 # Think-tag stripping utility tests (centralized logic in benchmarks/utils.py)
 # ---------------------------------------------------------------------------
 
-from eval_framework.benchmarks.utils import strip_think_tags, recover_answer_from_think_block
+from sLLM_eval_framework.benchmarks.utils import strip_think_tags, recover_answer_from_think_block
 
 
 def test_strip_think_tags_closed_block():

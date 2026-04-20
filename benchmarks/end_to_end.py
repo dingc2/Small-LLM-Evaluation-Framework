@@ -352,8 +352,8 @@ class EndToEndBenchmark(Benchmark):
         skills: Optional[Any],
         **kwargs: Any,
     ) -> TestResult:
-        from eval_framework.adapters.base import AdapterError
-        from eval_framework.skills.registry import SkillInput
+        from sLLM_eval_framework.adapters.base import AdapterError
+        from sLLM_eval_framework.skills.registry import SkillInput
 
         tool_defs = []
         if skills:
