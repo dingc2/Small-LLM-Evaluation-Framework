@@ -304,6 +304,7 @@ class EndToEndBenchmark(Benchmark):
                         score=0.0,
                         error=str(tr),
                         expected=tc.expected,
+                        prompt=tc.prompt,
                     )
                 )
             else:
@@ -464,6 +465,7 @@ class EndToEndBenchmark(Benchmark):
             passed=passed,
             score=score,
             model_output=final_content,
+            prompt=tc.prompt,
             expected=tc.expected,
             actual=actual_value,
             latency_ms=total_latency,
