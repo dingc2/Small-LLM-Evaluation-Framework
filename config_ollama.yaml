@@ -26,65 +26,65 @@ models:
   - type: ollama
     model: qwen3.5:2b
     kwargs:
-      temperature: 0.0
-      num_predict: 1024
+      temperature: 0.5
+      num_predict: 5096
 
   - type: ollama
     model: qwen3.5:4b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
   - type: ollama
     model: qwen3.5:9b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
   # ---------- Gemma 4 family ----------
   - type: ollama
     model: gemma4:e2b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
   - type: ollama
     model: gemma4:e4b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
   # ---------- Other families ----------
   - type: ollama
     model: nemotron-3-nano:4b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
   - type: ollama
     model: gpt-oss:20b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
   # ---------- Ministral-3 families ----------
   - type: ollama
     model: ministral-3:3b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
   - type: ollama
     model: ministral-3:8b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
   - type: ollama
     model: ministral-3:14b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
 # ----------------------------------------------------------
 # 2. Skill directory
@@ -110,12 +110,12 @@ benchmarks:
   - type: skill_selection_accuracy
     kwargs:
       include_no_skill_cases: true
-      temperature: 0.0
+      temperature: 0.5
 
   - type: end_to_end_task_completion
     kwargs:
       max_turns: 3
-      temperature: 0.0
+      temperature: 0.5
       float_tolerance: 1.0e-2
 
 # ----------------------------------------------------------

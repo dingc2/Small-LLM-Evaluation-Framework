@@ -12,19 +12,19 @@ models:
     model: ministral-3:3b
     kwargs:
       temperature: 0.5
-      num_predict: 2048
+      num_predict: 5096
 
   - type: ollama
     model: ministral-3:8b
     kwargs:
       temperature: 0.5
-      num_predict: 2048
+      num_predict: 5096
 
   - type: ollama
     model: ministral-3:14b
     kwargs:
       temperature: 0.5
-      num_predict: 2048
+      num_predict: 5096
 
 
 skills_dir: ./skills

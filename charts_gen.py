@@ -1,22 +1,26 @@
-"""Generate all charts from the full sweep results.
+"""Generate all charts from the latest full local sweep.
 
-Hardcoded snapshot of run ``20260417T033055Z`` (10 models, 33+33 cases,
-runs=3).  Prefer ``python analyze.py results/aggregated_results.json`` for
-a live regeneration from the JSON.  This script is a fallback/slide-ready
-variant with extra chart types (family colours, Qwen trend line) that
-``analyze.py`` doesn't emit.
+Snapshot source: run ``20260421T024743Z`` (10 Ollama models, 33+33 cases,
+``runs=3``). Most local metrics are loaded from that run's summary CSV so the
+slide-ready charts stay aligned with the README. Frontier bars in chart 8 and
+the local intersection slice remain hardcoded because they come from a separate
+manual subset analysis.
 """
+import csv
 import os
+from pathlib import Path
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
 import numpy as np
 
+BASE_DIR = Path(os.path.dirname(os.path.abspath(__file__)))
+RUN_ID = "20260421T024743Z"
+SUMMARY_PATH = BASE_DIR / "results" / f"{RUN_ID}_summary.csv"
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "results", "charts")
 os.makedirs(OUT, exist_ok=True)
 
-# ── Raw results (run 20260417T033055Z) ───────────────────────────────────────
 MODELS = [
     "qwen3.5:2b", "qwen3.5:4b", "qwen3.5:9b",
     "gemma4:e2b", "gemma4:e4b",
@@ -43,39 +47,36 @@ FAMILY_COLORS = {
     "GPT-OSS": "#8172B2", "Ministral": "#DD8452",
 }
 
-E2E_WITH = {
-    "qwen3.5:2b": 0.727, "qwen3.5:4b": 0.939, "qwen3.5:9b": 0.939,
-    "gemma4:e2b": 0.788, "gemma4:e4b": 0.879,
-    "nemotron-3-nano:4b": 0.747, "gpt-oss:20b": 0.879,
-    "ministral-3:3b": 0.909, "ministral-3:8b": 0.939, "ministral-3:14b": 0.848,
-}
-E2E_WITHOUT = {
-    "qwen3.5:2b": 0.152, "qwen3.5:4b": 0.131, "qwen3.5:9b": 0.182,
-    "gemma4:e2b": 0.636, "gemma4:e4b": 0.455,
-    "nemotron-3-nano:4b": 0.606, "gpt-oss:20b": 0.758,
-    "ministral-3:3b": 0.364, "ministral-3:8b": 0.576, "ministral-3:14b": 0.606,
-}
+def _load_summary_metrics(path: Path):
+    e2e_with = {}
+    e2e_without = {}
+    sel_with = {}
+    latency_with = {}
+    latency_without = {}
+
+    with path.open(newline="", encoding="utf-8") as fh:
+        for row in csv.DictReader(fh):
+            model = row["model"]
+            bench = row["benchmark"]
+            skill_config = row["skill_config"]
+            score = float(row["score"])
+            avg_latency_ms = float(row["avg_latency_ms"])
+
+            if bench == "end_to_end_task_completion":
+                if skill_config == "all_skills":
+                    e2e_with[model] = score
+                    latency_with[model] = avg_latency_ms
+                elif skill_config == "no_skills":
+                    e2e_without[model] = score
+                    latency_without[model] = avg_latency_ms
+            elif bench == "skill_selection_accuracy" and skill_config == "all_skills":
+                sel_with[model] = score
+
+    return e2e_with, e2e_without, sel_with, latency_with, latency_without
+
+
+E2E_WITH, E2E_WITHOUT, SEL_WITH, LATENCY_WITH, LATENCY_WITHOUT = _load_summary_metrics(SUMMARY_PATH)
 E2E_DELTA = {m: E2E_WITH[m] - E2E_WITHOUT[m] for m in MODELS}
-
-SEL_WITH = {
-    "qwen3.5:2b": 0.939, "qwen3.5:4b": 0.980, "qwen3.5:9b": 1.000,
-    "gemma4:e2b": 1.000, "gemma4:e4b": 0.939,
-    "nemotron-3-nano:4b": 1.000, "gpt-oss:20b": 1.000,
-    "ministral-3:3b": 0.970, "ministral-3:8b": 1.000, "ministral-3:14b": 1.000,
-}
-
-LATENCY_WITH = {
-    "qwen3.5:2b": 232028, "qwen3.5:4b": 188290, "qwen3.5:9b": 291272,
-    "gemma4:e2b": 71983, "gemma4:e4b": 129898,
-    "nemotron-3-nano:4b": 195349, "gpt-oss:20b": 76579,
-    "ministral-3:3b": 13506, "ministral-3:8b": 23006, "ministral-3:14b": 27732,
-}
-LATENCY_WITHOUT = {
-    "qwen3.5:2b": 93632, "qwen3.5:4b": 38281, "qwen3.5:9b": 57904,
-    "gemma4:e2b": 116369, "gemma4:e4b": 144078,
-    "nemotron-3-nano:4b": 131226, "gpt-oss:20b": 131350,
-    "ministral-3:3b": 6401, "ministral-3:8b": 5891, "ministral-3:14b": 8269,
-}
 
 SHORT = {
     "qwen3.5:2b": "Qwen\n2B", "qwen3.5:4b": "Qwen\n4B", "qwen3.5:9b": "Qwen\n9B",
@@ -103,7 +104,7 @@ ax.axhline(0, color="black", linewidth=0.8)
 ax.set_xticks(range(len(sorted_models)))
 ax.set_xticklabels(labels, fontsize=9)
 ax.set_ylabel("Score Uplift  (with skills − without skills)", fontsize=11)
-ax.set_title("Skill-Augmentation Uplift by Model (End-to-End Task Completion)\nrun 20260417T033055Z — 33 cases × 3 runs",
+ax.set_title(f"Skill-Augmentation Uplift by Model (End-to-End Task Completion)\nrun {RUN_ID} — 33 cases × 3 runs",
              fontweight="bold", fontsize=13)
 
 for bar, val in zip(bars, deltas):
@@ -111,9 +112,9 @@ for bar, val in zip(bars, deltas):
     ax.text(bar.get_x() + bar.get_width() / 2, ypos, f"{val:+.2f}",
             ha="center", va="bottom", fontsize=10, fontweight="bold")
 
-ax.set_ylim(0, 0.95)
-ax.set_yticks([0, 0.25, 0.5, 0.75])
-ax.set_yticklabels(["0%", "+25%", "+50%", "+75%"])
+ax.set_ylim(0, 1.0)
+ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
+ax.set_yticklabels(["0%", "+25%", "+50%", "+75%", "+100%"])
 
 patches = [mpatches.Patch(color=c, label=f) for f, c in FAMILY_COLORS.items()]
 ax.legend(handles=patches, loc="upper right", fontsize=9)
@@ -250,7 +251,7 @@ ax.set_ylabel("End-to-End Score", fontsize=12)
 ax.set_ylim(0, 1.1)
 ax.set_yticks([0, 0.25, 0.5, 0.75, 1.0])
 ax.set_yticklabels(["0%", "25%", "50%", "75%", "100%"])
-ax.set_title("Qwen3.5 Family — Uplift Peaks at 4B, Not 2B",
+ax.set_title("Qwen3.5 Family — 9B Edges 4B, Both Far Above 2B",
              fontweight="bold", fontsize=13)
 ax.legend(fontsize=10, loc="lower right")
 ax.grid(alpha=0.25)
@@ -296,20 +297,17 @@ def chart_frontier_vs_small_tool(out_dir):
     on the 24 intersection cases (17 strong + 7 moderate) where precision math
     and niche formulas make frontier-no-tool plausibly struggle."""
 
-    # Hardcoded from aggregated_results.json + manual intersection filter
-    # Intersection-24: e2e_calc_03..06, e2e_lab_01..08, e2e_dots_01..05 (strong-17)
-    #                  e2e_calc_01..02, e2e_conv_01,03, e2e_date_01,02,04 (moderate-7)
     INTERSECTION24 = {
         # (model_label, config_label): accuracy
         ("gpt-4.1-mini",      "no tools\n(frontier)"):   0.764,
         ("gpt-4.1-nano",      "no tools\n(frontier)"):   0.667,
         ("gpt-5.4-mini",      "no tools\n(frontier)"):   0.778,
-        ("qwen3.5:4b",        "with tools\n(local)"):    0.917,
-        ("ministral-3:8b",    "with tools\n(local)"):    0.958,
-        ("nemotron-3-nano:4b","with tools\n(local)"):    0.667,
-        ("qwen3.5:4b",        "no tools\n(local ref)"):  0.111,
-        ("ministral-3:8b",    "no tools\n(local ref)"):  0.542,
-        ("nemotron-3-nano:4b","no tools\n(local ref)"):  0.625,
+        ("qwen3.5:4b",        "with tools\n(local)"):    0.958,
+        ("ministral-3:8b",    "with tools\n(local)"):    1.000,
+        ("nemotron-3-nano:4b","with tools\n(local)"):    0.722,
+        ("qwen3.5:4b",        "no tools\n(local ref)"):  0.042,
+        ("ministral-3:8b",    "no tools\n(local ref)"):  0.458,
+        ("nemotron-3-nano:4b","no tools\n(local ref)"):  0.639,
     }
 
     # Colors keyed to model family; frontier models get GPT-OSS purple
