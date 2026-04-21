@@ -66,7 +66,7 @@ EvaluationRunner (runner.py)
   ├── Skills: calculator, unit_converter (+ clinical lab units), dictionary, datetime_calc, powerlifting (IPF Dots)
   ├── Benchmarks: skill_selection (33 cases), end_to_end (33 cases)
   ├── Skill configs: all_skills (5 tools) vs no_skills (baseline)
-  └── Output: JSON + CSV in results/, comparison table with n_cases column
+  └── Output: per-run `results/<run_id>_{results.json, summary.csv, failures.jsonl}` plus `results/aggregated_results.json` (auto-merged by runner.py after every sweep)
 ```
 
 Three pluggable ABCs in `base.py` files: `ModelAdapter`, `Benchmark`, `SkillRegistry`.
@@ -81,10 +81,12 @@ Three pluggable ABCs in `base.py` files: `ModelAdapter`, `Benchmark`, `SkillRegi
 
 4. **Path/import issues**: `runner.py` and `analyze.py` have `sys.path` shims that insert the parent directory of the project so `from sLLM_eval_framework...` imports resolve when running scripts directly. Config paths like `./skills` and `./results` are relative to the `sLLM_eval_framework/` project root.
 
+5. **Ollama tool-call recovery** (commits `83be862`, `a50ef55`): skill parsers and `end_to_end.py` now tolerate malformed tool-call wrappers that Ollama's smaller models frequently emit (unbalanced braces, escaped quotes inside JSON strings, tool calls buried after prose, etc.). Don't "simplify" the parser by reverting to a strict JSON parse — the uplift numbers in the latest sweep (`20260421T024743Z`) materially depend on this recovery path.
+
 ## Key Design Decisions
 
 - **OllamaAdapter** uses native `/api/chat` endpoint (not OpenAI-compatible wrapper) via httpx, 300s timeout
-- **Temperature = 0.0** for reproducibility (but quantized inference still has some non-determinism)
+- **Temperature**: frontier arm uses `0.0` for reproducibility; the local sweep (`config_ollama.yaml`) currently runs at `0.5` with `num_predict=5096` to give thinking models enough budget for `<think>` blocks + answer. Quantized inference has residual non-determinism regardless, which is why `runs=3`.
 - **All models use Ollama default quantization** (typically Q4_K_M) — this is a known confound
 - **Concurrency = 1** for Ollama (sequential model loading/unloading)
 - **Keyword-overlap** scorer for dictionary (not exact match, not BERTScore)
@@ -102,9 +104,11 @@ Three pluggable ABCs in `base.py` files: `ModelAdapter`, `Benchmark`, `SkillRegi
 - `analyze.py` — Reads result JSON, generates 5 chart types (with error bars when runs>1)
 - `merge_results.py` — Merges multiple run JSONs into aggregated_results.json (incremental runs)
 - `charts_gen.py` — Standalone chart script with hardcoded results (update after re-runs)
-- `config_ollama.yaml` — Full sweep config (10 models, runs=3)
+- `config_ollama.yaml` — Full sweep config (10 models, runs=3, temperature=0.5, num_predict=5096)
 - `config_quick.yaml` — Smoke test config (3 Ministral models, runs=1)
 - `config_frontier.yaml` — Frontier no-tools baseline (gpt-4.1-mini/nano + gpt-5.4-mini, runs=3, concurrency=4)
+- `config.yaml` — Generic example template (gpt-4o-mini + commented HF/llama.cpp stanzas). Not used by any sweep — don't confuse with the three real configs above.
+- `implementation_plan.md` — Historical plan for the SkillsBench port (lab units + powerlifting). Work is shipped; file is retained for context on why those skills exist.
 - `model_cards.md` — Model cards, data card, ethical considerations
 - `README.md` — Full documentation including critical analysis section and SkillsBench provenance notes
 - `benchmarks/end_to_end.py` — Multi-turn tool-call benchmark with thinking-tag stripping
@@ -114,16 +118,19 @@ Three pluggable ABCs in `base.py` files: `ModelAdapter`, `Benchmark`, `SkillRegi
 - `skills/powerlifting/skill.py` — IPF Dots (2019) coefficient (port from benchflow-ai/skillsbench)
 - `benchmarks/utils.py` — Centralized think-tag stripping utilities
 
-## Known Anomalies in Results (as of run 20260417T033055Z)
+## Known Anomalies in Results (as of run 20260421T024743Z)
 
-- **All 10 models now show positive uplift.** The earlier Gemma4:e2b *negative* uplift (seen in the `20260412T215302Z` run) is gone. With the 33-case benchmark, gemma4:e2b is +0.152 — still the smallest uplift in the sweep, but positive. The "formatting as a distinct capability" story survives as "smallest uplift" rather than "negative uplift."
-- **Qwen3.5 does NOT show clean diminishing returns anymore.** Uplift by size: 2B +0.576, 4B +0.808 (largest), 9B +0.758. The 4B is the peak, not the 2B. The more honest framing is "small-to-mid Qwen models gain the most from tools; the 20B upper bound leaves less headroom (gpt-oss:20b: +0.121)."
-- **Smallest uplift is actually nemotron-3-nano:4b (+0.141)** and gpt-oss:20b (+0.121) — not gemma4:e2b. Nemotron's baseline is surprisingly strong for a 4B model.
-- **Skill selection accuracy is near-perfect** across the board: 9/10 models at ≥0.94, most at 1.00. Routing is not the bottleneck; tool-call formatting is.
+Latest local sweep incorporates the improved tool-call detection/recovery landed in `83be862` + `a50ef55`. Uplifts jumped materially vs. the `20260417T033055Z` snapshot — the Qwen ladder in particular now sits near ceiling with tools. Verify against `results/aggregated_results.json` before citing in writing.
+
+- **All 10 models still show positive uplift, but the magnitudes are larger.** With better tool-call recovery, `all_skills` scores rise across the board and the no_skills baselines become the dominant contributor to the uplift spread.
+- **Qwen3.5 peak shifted from 4B to 9B (barely).** Uplift by size: 2B +0.727, 4B +0.919, 9B +0.939. 9B and 4B are both near ceiling once tools are available; the cleanest framing is "tool access transforms the whole Qwen ladder" rather than any specific "peak at N."
+- **Smallest uplift is `gpt-oss:20b` at +0.111**, then `nemotron-3-nano:4b` at +0.182. Gemma4:e2b rose to +0.222 — it is no longer in the bottom two. Nemotron's strong `no_skills` baseline (0.616) is what keeps its uplift small.
+- **Skill selection accuracy is NOT uniformly near-perfect anymore.** 7 models hit 1.000, but `gemma4:e4b` 0.970, `ministral-3:3b` 0.939, and `qwen3.5:2b` 0.848 are visible laggards. `qwen3.5:2b` in particular is a real routing-bottleneck case worth flagging — previous "routing is solved" framing doesn't hold for the 2B tier.
+- **Temperature was 0.5 (not 0.0) for the latest sweep,** with `num_predict=5096`. The "Temperature = 0.0 for reproducibility" design decision describes the default config intent; the 20260421 run relaxed it. Check `config_ollama.yaml` before citing a specific run's settings.
 
 ## Recent Improvements
 
 - **Aggregated results DB** (`merge_results.py`): merge multiple run JSONs into one file so individual models can be run incrementally. Runner auto-merges after each run.
 - **Centralized think-tag stripping** (`benchmarks/utils.py`): `strip_think_tags()` and `recover_answer_from_think_block()` shared across both benchmarks.
-- **Failure mode tracking**: end-to-end results now record `skill_selected_correctly`, `valid_tool_call_format`, `tool_executed_successfully`, `final_answer_correct` in metadata.
+- **Failure mode tracking**: end-to-end results now record `skill_selected_correctly`, `valid_tool_call_format`, `tool_executed_successfully`, `final_answer_correct` in metadata. Full per-case failure traces (prompt, expected, actual, raw model_output, error) are also exported to `results/<run_id>_failures.jsonl` on every run — use these to diagnose tool-call formatting regressions without re-running the sweep.
 - **Std dev + error bars**: comparison table has `score_std` and `latency_std`; charts show ±1 SD error bars when runs>1.
