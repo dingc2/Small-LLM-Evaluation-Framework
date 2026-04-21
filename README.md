@@ -103,6 +103,14 @@ clinical lab + 5 powerlifting. Numeric answers are scored with ±0.01
 tolerance; dictionary answers are scored by 60 % keyword overlap on words of
 length ≥ 3 (exact‑match is impossible for definitions).
 
+> **What "tool use" means here.** In `skill_selection_accuracy`, no tool is
+> executed; the model only names the skill it would choose. In
+> `end_to_end_task_completion`, enabled skills are exposed as structured tool
+> definitions; if the model emits a valid tool call, the harness runs the
+> corresponding local Python `execute()` function and feeds the result back for
+> the final answer. These are narrow benchmark skills, not arbitrary shell or
+> OS commands.
+
 > **Apples‑to‑apples check.** Both `all_skills` and `no_skills` run the full
 > 33 cases. In `no_skills`, tool definitions simply aren't injected into the
 > prompt — the model must answer from raw reasoning. The `n_cases` column in
@@ -304,6 +312,20 @@ comprehension (frontier wins by default), and some are pure tool calls like
 that mentally to spec). I manually curated a **24‑case intersection subset**
 where both sides can plausibly compete, plus a **Strong‑17** precision
 subset and a **Moderate‑7** everyday subset.
+
+- **Intersection‑24** = the full comparison slice used in this section:
+  **Strong‑17 + Moderate‑7**.
+- **Strong‑17** = the hardest precision-heavy tasks: 4 advanced calculator
+  cases (`sin`/`cos`, `sqrt`, mixed `log2`/`sqrt`, decimal arithmetic), all 8
+  clinical lab conversions, and all 5 powerlifting Dots calculations.
+- **Moderate‑7** = more ordinary structured tasks: 2 simpler calculator cases,
+  2 standard unit conversions (`km → miles`, `grams → ounces`), and 3 date
+  questions (days-between / day-of-week).
+
+In other words, **Strong‑17** asks "who wins when exact computation really
+matters?", while **Moderate‑7** asks "who wins on everyday structured
+problems?" Dictionary-definition items and the trivial no-tool baseline prompts
+are not part of this head-to-head slice.
 
 | Model | Config | Intersection‑24 | Strong‑17 | Moderate‑7 |
 |---|---|---|---|---|
