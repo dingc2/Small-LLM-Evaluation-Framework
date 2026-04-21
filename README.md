@@ -213,11 +213,11 @@ python merge_results.py results/
 # Tables + the 5 analytical charts
 python analyze.py results/aggregated_results.json
 
-# The 8 slide-ready charts (hardcoded snapshot — rerun after new data)
+# The 8 slide-ready charts (latest full local sweep + frontier slice)
 python charts_gen.py
 ```
 
-Run IDs are printed at the end of each sweep (e.g. `20260417T033055Z`). Raw
+Run IDs are printed at the end of each sweep (e.g. `20260421T024743Z`). Raw
 results land in `results/<run_id>_results.json`, summaries in
 `results/<run_id>_summary.csv`, and charts in `results/charts/`.
 
@@ -225,22 +225,23 @@ results land in `results/<run_id>_results.json`, summaries in
 
 ## 6. Results — Act I: Does tool access help small local models?
 
-Run `20260417T033055Z` · 10 models · 33 end‑to‑end cases · `runs=3`.
+Run `20260421T024743Z` · 10 models · 33 end‑to‑end cases · `runs=3` ·
+`temperature=0.5` · `num_predict=5096`.
 
 ### 6.1 End‑to‑end scores, sorted by uplift
 
 | Model | `all_skills` | `no_skills` | Skill uplift |
 |---|---|---|---|
-| qwen3.5:4b | 0.939 | 0.131 | **+0.808** |
-| qwen3.5:9b | 0.939 | 0.182 | **+0.758** |
-| qwen3.5:2b | 0.727 | 0.152 | **+0.576** |
-| ministral‑3:3b | 0.909 | 0.364 | **+0.545** |
-| gemma4:e4b | 0.879 | 0.455 | **+0.424** |
-| ministral‑3:8b | 0.939 | 0.576 | **+0.364** |
-| ministral‑3:14b | 0.848 | 0.606 | **+0.242** |
-| gemma4:e2b | 0.788 | 0.636 | **+0.152** |
-| nemotron‑3‑nano:4b | 0.747 | 0.606 | **+0.141** |
-| gpt‑oss:20b | 0.879 | 0.758 | **+0.121** |
+| qwen3.5:9b | 0.960 | 0.020 | **+0.939** |
+| qwen3.5:4b | 0.970 | 0.051 | **+0.919** |
+| qwen3.5:2b | 0.758 | 0.030 | **+0.727** |
+| ministral‑3:3b | 0.980 | 0.303 | **+0.677** |
+| ministral‑3:8b | 0.990 | 0.455 | **+0.535** |
+| ministral‑3:14b | 0.980 | 0.606 | **+0.374** |
+| gemma4:e4b | 0.929 | 0.677 | **+0.253** |
+| gemma4:e2b | 0.838 | 0.616 | **+0.222** |
+| nemotron‑3‑nano:4b | 0.798 | 0.616 | **+0.182** |
+| gpt‑oss:20b | 0.889 | 0.778 | **+0.111** |
 
 ![Skill uplift by model](results/charts/1_skill_uplift.png)
 
@@ -248,20 +249,18 @@ Run `20260417T033055Z` · 10 models · 33 end‑to‑end cases · `runs=3`.
 
 1. **All 10 models show positive uplift.** Tools help every model, even the
    20 B one — just by different amounts.
-2. **Qwen3.5 4 B and 9 B are the biggest winners** (+0.808 and +0.758), both
-   going from ~15 % without tools to ~94 % with tools. These models are
-   essentially unusable without tools on numeric / formula tasks and nearly
-   ceiling with them.
-3. **Smaller ≠ always better uplift.** The naive story "the smaller the
-   model, the more tools help" is wrong: Qwen3.5 *peaks at 4 B*, not 2 B.
-   More on that in [§ 9](#9-anomalies-i-encountered).
-4. **Larger baselines leave less headroom.** gpt‑oss:20 B already reasons to
-   0.758 unaided, so it only gains +0.121. ministral‑3:14 B is similar at
-   +0.242.
-5. **Skill routing is near‑perfect.** 8 / 10 models hit ≥ 0.94 on the
-   skill‑selection benchmark; gemma4:e4b and qwen3.5:2b are both 0.939. The
-   bottleneck isn't "which tool?" — it's "can you format the tool call
-   correctly?".
+2. **Qwen3.5 9 B and 4 B are the biggest winners** (+0.939 and +0.919). Their
+   no‑tools baselines collapse to ~2–5 %, then jump to ~96–97 % once tools are
+   available.
+3. **Most small models now beat the 20 B no‑tools baseline.** Seven of the
+   eight local models at ≤ 9 B score above `gpt‑oss:20b` without tools
+   (0.778); only `qwen3.5:2b` falls just short at 0.758.
+4. **Larger baselines still leave less headroom.** `gpt‑oss:20b` starts the
+   highest unaided at 0.778, so it posts the smallest uplift at +0.111 even
+   after rising to 0.889 with tools.
+5. **Skill routing is strong for most models, but not uniformly perfect.**
+   Seven models hit 1.000 on skill selection, `gemma4:e4b` lands at 0.970,
+   `ministral‑3:3b` at 0.939, and `qwen3.5:2b` is the clear laggard at 0.848.
 
 ![With vs without skills](results/charts/2_with_vs_without.png)
 ![Score heatmap](results/charts/5_heatmap.png)
@@ -311,21 +310,20 @@ subset and a **Moderate‑7** everyday subset.
 | gpt‑4.1‑mini | frontier, no tools | 0.764 | 0.725 | 0.857 |
 | gpt‑4.1‑nano | frontier, no tools | 0.667 | 0.588 | 0.857 |
 | gpt‑5.4‑mini | frontier, no tools | 0.778 | 0.745 | 0.857 |
-| qwen3.5:4b | local 4 B, **with tools** | **0.917** | 0.941 | 0.857 |
-| ministral‑3:8b | local 8 B, **with tools** | **0.958** | **1.000** | 0.857 |
-| nemotron‑3‑nano:4b | local 4 B, with tools | 0.667 | 0.529 | 1.000 |
+| qwen3.5:4b | local 4 B, **with tools** | **0.958** | 0.941 | **1.000** |
+| ministral‑3:8b | local 8 B, **with tools** | **1.000** | **1.000** | **1.000** |
+| nemotron‑3‑nano:4b | local 4 B, with tools | 0.722 | 0.608 | **1.000** |
 
 ![Frontier vs small+tools](results/charts/8_frontier_vs_small_tool.png)
 
 ### 8.1 The answer, plainly
 
-**Yes — a 4 B or 8 B local model with tools beats the best frontier‑no‑tools
-model tested.** `qwen3.5:4b` with tools scores **0.917** on the intersection
-subset versus **0.778** for `gpt‑5.4‑mini`. `ministral‑3:8b` with tools
-pushes that to **0.958** on the 24‑case subset and **a perfect 1.000** on the
-Strong‑17 precision subset. Adding the newer‑generation `gpt‑5.4‑mini` to the
-frontier side only narrowed the gap by ~1.4 percentage points — it didn't
-close it.
+**Yes — a 4 B or 8 B local model with tools still beats the best
+frontier‑no‑tools model tested, and the gap is wider in the latest local
+rerun.** `qwen3.5:4b` with tools now scores **0.958** on the intersection
+subset versus **0.778** for `gpt‑5.4‑mini`, and `ministral‑3:8b` reaches
+**1.000** on all 24 cases. The newest local sweep therefore puts the gap at
+roughly **18–22 percentage points**, not a near tie.
 
 The gap is widest exactly where you'd expect: `sqrt(7291)` to 2 decimals,
 `sin(1.37) + cos(2.84)` to 3 decimals, the IPF Dots polynomial, vitamin‑D
@@ -340,28 +338,29 @@ And the research‑question chart, plainly stated:
 
 ## 9. Anomalies I encountered
 
-### 9.1 Gemma4:e2b went from "negative uplift" to "smallest‑positive uplift"
+### 9.1 Gemma4:e2b went from "negative uplift" to a stable positive uplift
 
 In the very first pilot (`20260412T215302Z`, 20 cases), gemma4:e2b scored
 ~40 % *with* skills versus ~75 % *without* — a striking negative uplift
 attributed to tool‑call JSON formatting failures. After expanding to 33
-cases and adding failure‑mode tracking, the gap closed: gemma4:e2b is now
-+0.152 with skills (78.8 % vs 63.6 %). The honest story is "smallest uplift
-in the sweep," not "net negative." Tool‑call formatting is still a distinct
-capability that varies across families at the same parameter count — just
-not catastrophically.
+cases and adding failure‑mode tracking, the gap closed and stayed closed:
+gemma4:e2b is now **+0.222** with skills (**83.8 % vs 61.6 %**). It is no
+longer the smallest positive uplift in the sweep; that now belongs to
+`gpt‑oss:20b` at +0.111. The honest story is that the early negative result
+was unstable and disappeared once the benchmark matured.
 
-### 9.2 Qwen3.5 peaks at 4 B, not 2 B
+### 9.2 Qwen3.5 no longer peaks cleanly at 4 B
 
 Early data suggested clean diminishing returns: "the smaller the model, the
-more tools help." The full 10‑model sweep told a different story.
+more tools help." The later full sweeps told a more nuanced story.
 
 ![Qwen family](results/charts/6_qwen_family.png)
 
-Qwen3.5 uplift by size: **2 B +0.576, 4 B +0.808, 9 B +0.758**. The peak is
-4 B. The truthful framing is "small‑to‑mid Qwen models gain the most from
-tool access; the 20 B upper bound (gpt‑oss:20 B at +0.121) leaves less
-headroom" — not "2 B benefits most."
+In the latest rerun, Qwen3.5 uplift by size is **2 B +0.727, 4 B +0.919,
+9 B +0.939**. So the earlier "4 B is the clear peak" claim no longer holds:
+9 B edges 4 B, and both are far above 2 B. The truthful framing now is
+"tool access transforms the whole Qwen ladder, with 4 B and 9 B both near
+ceiling once tools are available."
 
 ### 9.3 Qwen3.5 thinking blocks
 
@@ -412,11 +411,11 @@ Documented in `CLAUDE.md` so it doesn't regress.
 
 **Yes, with qualifications:**
 
-1. Against the 20 B local upper bound (`gpt‑oss:20b` at 0.758 without tools),
-   `qwen3.5:4b` with tools (0.939) wins outright.
+1. Against the 20 B local upper bound (`gpt‑oss:20b` at 0.778 without tools),
+   `qwen3.5:4b` with tools (0.970) wins outright.
 2. Against the frontier‑mini tier without tools (`gpt‑5.4‑mini` at 0.778 on
    the full suite / 0.778 on the intersection), `qwen3.5:4b` with tools
-   (0.917 intersection) and `ministral‑3:8b` with tools (0.958 intersection,
+   (0.958 intersection) and `ministral‑3:8b` with tools (1.000 intersection,
    1.000 Strong‑17) both win clearly.
 3. The gap is biggest on precision‑math and niche‑formula tasks. On everyday
    reading or trivial arithmetic, frontier‑no‑tools ties or wins.

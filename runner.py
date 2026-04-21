@@ -14,6 +14,9 @@ Run from inside the sLLM_eval_framework/ directory:
     # Override output directory
     python runner.py --config config_ollama.yaml --output results/my_run --verbose
 
+    # Debug: JSONL of failed tests (all_skills only)
+    python runner.py --config config_quick.yaml --verbose --debug
+
     # Programmatic
     runner = EvaluationRunner.from_yaml("config_ollama.yaml")
     summary = await runner.run_all()
@@ -115,6 +118,7 @@ class RunnerConfig(BaseModel):
     runs: int = 1
     output_dir: str = "./results"
     concurrency: int = 4
+    debug_failures: bool = False
 
     @field_validator("runs")
     @classmethod
@@ -373,6 +377,9 @@ class EvaluationRunner:
         summary.save_json(output_dir / f"{run_id}_results.json")
         summary.save_csv(output_dir / f"{run_id}_summary.csv")
 
+        if cfg.debug_failures:
+            _write_failures_jsonl(summary, output_dir)
+
         # Auto-merge all results in the output directory into aggregated_results.json.
         # Wrapped in try/except so a merge failure never blocks the primary output.
         try:
@@ -490,6 +497,43 @@ def _build_comparison_table(results: list[BenchmarkResult]) -> list[dict[str, An
     return rows
 
 
+def _write_failures_jsonl(summary: RunSummary, output_dir: Path) -> None:
+    """
+    Write one JSON line per failed test case for runs with
+    ``skill_config_name == "all_skills"`` (prompt + model output for debugging).
+    """
+    path = output_dir / f"{summary.run_id}_failures.jsonl"
+    n_written = 0
+    with open(path, "w", encoding="utf-8") as fh:
+        for br in summary.results:
+            if br.metadata.get("skill_config_name") != "all_skills":
+                continue
+            run_index = br.metadata.get("run_index", 0)
+            for tr in br.test_results:
+                if tr.passed and tr.error is None:
+                    continue
+                row = {
+                    "run_id": summary.run_id,
+                    "model": br.model_name,
+                    "skill_config": "all_skills",
+                    "benchmark": br.benchmark_name,
+                    "run_index": run_index,
+                    "test_id": tr.test_id,
+                    "prompt": tr.prompt,
+                    "expected": tr.expected,
+                    "actual": tr.actual,
+                    "model_output": tr.model_output,
+                    "error": tr.error,
+                    "metadata": tr.metadata,
+                }
+                fh.write(json.dumps(row, default=str) + "\n")
+                n_written += 1
+    if n_written == 0:
+        logger.info("Debug: 0 all_skills failures")
+    else:
+        logger.info("Debug: wrote %d failures to %s", n_written, path)
+
+
 def compare_results(
     results: list[BenchmarkResult],
     with_skills_config: str = "all_skills",
@@ -543,11 +587,17 @@ def compare_results(
 # ---------------------------------------------------------------------------
 
 
-async def _main_async(config_path: str, output: Optional[str] = None) -> None:
-    runner = EvaluationRunner.from_yaml(
-        config_path,
-        **({"output_dir": output} if output else {}),
-    )
+async def _main_async(
+    config_path: str,
+    output: Optional[str] = None,
+    debug_failures: bool = False,
+) -> None:
+    overrides: dict[str, Any] = {}
+    if output:
+        overrides["output_dir"] = output
+    if debug_failures:
+        overrides["debug_failures"] = True
+    runner = EvaluationRunner.from_yaml(config_path, **overrides)
     summary = await runner.run_all()
     summary.print_table()
     print(f"\nRun ID : {summary.run_id}")
@@ -562,9 +612,17 @@ if __name__ == "__main__":
     parser.add_argument("--config", default="config.yaml", help="Path to config YAML")
     parser.add_argument("--output", default=None, help="Override output directory")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help=(
+            "Write results/{run_id}_failures.jsonl with prompt + model_output "
+            "for each failed test under the 'all_skills' skill config."
+        ),
+    )
     args = parser.parse_args()
 
     if args.verbose:
         logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 
-    asyncio.run(_main_async(args.config, args.output))
+    asyncio.run(_main_async(args.config, args.output, debug_failures=args.debug))

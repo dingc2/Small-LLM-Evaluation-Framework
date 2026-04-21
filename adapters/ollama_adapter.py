@@ -22,6 +22,7 @@ Example
 from __future__ import annotations
 
 import json
+import re
 import time
 from typing import Any, Optional
 
@@ -129,6 +130,11 @@ class OllamaAdapter(ModelAdapter):
                         arguments=fn.get("arguments", {}),
                     )
                 )
+        elif tools and content:
+            tool_calls, content = self._parse_text_tool_calls(
+                content,
+                allowed_names={tool.name for tool in tools},
+            )
 
         # Token counts from Ollama response
         prompt_tokens = data.get("prompt_eval_count", 0)
@@ -159,6 +165,43 @@ class OllamaAdapter(ModelAdapter):
                 },
             },
         }
+
+    @staticmethod
+    def _parse_text_tool_calls(
+        text: str,
+        allowed_names: Optional[set[str]] = None,
+    ) -> tuple[list[ToolCall], str]:
+        """
+        Recover tool calls from text-only outputs like
+        ``calculator[ARGS]{"query":"2+2"}``.
+
+        Some local models emit this pseudo-tool syntax instead of populating
+        Ollama's native ``message.tool_calls`` field. When that happens, treat
+        the content as a real tool call so the benchmark can execute it.
+        """
+        text = text.strip()
+
+        match = re.fullmatch(
+            r"([A-Za-z_][\w-]*)\s*\[ARGS\]\s*(\{.*\})",
+            text,
+            re.DOTALL,
+        )
+        if not match:
+            return [], text
+
+        tool_name = match.group(1)
+        if allowed_names is not None and tool_name not in allowed_names:
+            return [], text
+
+        try:
+            arguments = json.loads(match.group(2))
+        except json.JSONDecodeError:
+            return [], text
+
+        if not isinstance(arguments, dict):
+            return [], text
+
+        return [ToolCall(name=tool_name, arguments=arguments)], ""
 
     async def list_local_models(self) -> list[dict[str, Any]]:
         """List models available in the local Ollama instance."""

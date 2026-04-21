@@ -33,12 +33,28 @@ from .base import Benchmark, BenchmarkResult, TestCase, TestResult
 logger = logging.getLogger(__name__)
 
 # How to ask the model to produce a final numeric/text answer
-_SYSTEM_PROMPT = """\
-You are a helpful assistant. You have access to tools that can help you
-answer the user's question. Use them when appropriate.
+_SYSTEM_PROMPT_WITH_TOOLS = """\
+You are a helpful assistant with tool access.
 
-After using a tool (if needed), provide your final answer as a plain number
-or short string — nothing else. Do not include units or extra explanation.
+If a relevant tool is available, you MUST call it before answering.
+Do not do arithmetic, unit conversions, clinical lab conversions, technical
+term definitions, date calculations, or Dots calculations from memory when
+the matching tool is available.
+Do not write fake tool syntax such as calculator[ARGS]{...} or raw JSON in
+plain text. Use the provided tool interface only.
+
+After using a tool, provide your final answer as a plain number or short
+string — nothing else. Do not include units or extra explanation.
+Do not explain your reasoning. Output ONLY the answer.
+
+If no tool applies, answer directly.
+"""
+
+_SYSTEM_PROMPT_NO_TOOLS = """\
+You are a helpful assistant. No tools are available in this conversation.
+
+Provide your final answer as a plain number or short string — nothing else.
+Do not include units or extra explanation.
 Do not explain your reasoning. Output ONLY the answer.
 """
 
@@ -304,6 +320,7 @@ class EndToEndBenchmark(Benchmark):
                         score=0.0,
                         error=str(tr),
                         expected=tc.expected,
+                        prompt=tc.prompt,
                     )
                 )
             else:
@@ -383,7 +400,7 @@ class EndToEndBenchmark(Benchmark):
                 response = await model.generate(
                     prompt=prompt,
                     tools=tool_defs if tool_defs else None,
-                    system_prompt=_SYSTEM_PROMPT,
+                    system_prompt=_SYSTEM_PROMPT_WITH_TOOLS if tool_defs else _SYSTEM_PROMPT_NO_TOOLS,
                     temperature=kwargs.get("temperature", self._temperature),
                 )
             except AdapterError as exc:
@@ -464,6 +481,7 @@ class EndToEndBenchmark(Benchmark):
             passed=passed,
             score=score,
             model_output=final_content,
+            prompt=tc.prompt,
             expected=tc.expected,
             actual=actual_value,
             latency_ms=total_latency,

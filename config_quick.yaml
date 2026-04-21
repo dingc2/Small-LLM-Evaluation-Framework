@@ -11,20 +11,20 @@ models:
   - type: ollama
     model: ministral-3:3b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
   - type: ollama
     model: ministral-3:8b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
   - type: ollama
     model: ministral-3:14b
     kwargs:
-      temperature: 0.0
-      num_predict: 2048
+      temperature: 0.5
+      num_predict: 5096
 
 
 skills_dir: ./skills
@@ -38,12 +38,12 @@ skill_configs:
 benchmarks:
   - type: skill_selection_accuracy
     kwargs:
-      temperature: 0.0
+      temperature: 0.5
   - type: end_to_end_task_completion
     kwargs:
       max_turns: 2
-      temperature: 0.0
+      temperature: 0.5
 
-runs: 3
+runs: 1
 concurrency: 1
 output_dir: ./results

@@ -200,6 +200,7 @@ class SkillSelectionBenchmark(Benchmark):
                         passed=False,
                         score=0.0,
                         error=str(tr),
+                        prompt=tc.prompt,
                     )
                 )
             else:
@@ -276,6 +277,7 @@ class SkillSelectionBenchmark(Benchmark):
                 score=0.0,
                 error=str(exc),
                 expected=tc.expected,
+                prompt=tc.prompt,
             )
 
         from .utils import strip_think_tags, recover_answer_from_think_block
@@ -312,6 +314,7 @@ class SkillSelectionBenchmark(Benchmark):
             passed=passed,
             score=score,
             model_output=response.content,
+            prompt=tc.prompt,
             expected=tc.expected,
             actual=normalised,
             latency_ms=response.latency_ms,

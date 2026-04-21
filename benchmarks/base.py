@@ -47,6 +47,7 @@ class TestResult(BaseModel):
     passed: bool
     score: float                    # 0.0 – 1.0
     model_output: str = ""
+    prompt: str = ""               # user-facing prompt (for debug reports)
     expected: Any = None
     actual: Any = None
     latency_ms: float = 0.0

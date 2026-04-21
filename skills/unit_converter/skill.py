@@ -225,7 +225,7 @@ def _parse_clinical_query(query: str) -> tuple[str, float, str, str] | None:
     # letters inside the from_unit itself.
     tail = query[m_val.end():]
     m_to = re.search(
-        r"\b(?:to|in|into|=)\s*([A-Za-zµ]+(?:/[A-Za-zµ]+)?)",
+        r"(?:\b(?:to|in|into)\b|=)\s*([A-Za-zµ]+(?:/[A-Za-zµ]+)?)",
         tail,
         re.IGNORECASE,
     )
