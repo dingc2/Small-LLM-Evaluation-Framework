@@ -525,9 +525,9 @@ sLLM_eval_framework/
    │ ModelAdapter │     │  SkillRegistry │
    │ Ollama  ✦    │     │  auto-discover │
    │ OpenAI  ✦    │     └─────┬──────────┘
-   │ Anthropic          ──────┤
-   │ HuggingFace              │
-   │ LlamaCpp                 ▼
+   │ Anthropic    │           │
+   │ HuggingFace  │           │
+   │ LlamaCpp     │           ▼
    └──────┬───────┘     Skills: calculator, unit_converter (+clinical
           │             lab), dictionary, datetime_calc, powerlifting
           ▼
